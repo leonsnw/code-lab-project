@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeLab - Autenticacao</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>CodeLab</h1>
+      <p>Primeira entrega: cadastro, login e sessao persistida.</p>
+    </header>
+
+    <main>
+      <section id="auth-section">
+        <h2>Acesso</h2>
+        <p id="auth-message" class="message">Entre ou crie uma conta de estudante.</p>
+
+        <div class="forms">
+          <form id="login-form">
+            <fieldset>
+              <legend>Entrar</legend>
+              <label for="login-email">E-mail</label>
+              <input id="login-email" name="email" type="email" autocomplete="email" required />
+
+              <label for="login-password">Senha</label>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="72" required />
+
+              <button type="submit">Entrar</button>
+            </fieldset>
+          </form>
+
+          <form id="register-form">
+            <fieldset>
+              <legend>Criar conta</legend>
+              <label for="register-name">Nome</label>
+              <input id="register-name" name="name" type="text" autocomplete="name" maxlength="100" required />
+
+              <label for="register-email">E-mail</label>
+              <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required />
+
+              <label for="register-password">Senha</label>
+              <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+
+              <label for="register-confirmation">Confirmar senha</label>
+              <input id="register-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+
+              <button type="submit">Criar conta</button>
+            </fieldset>
+          </form>
+        </div>
+
+        <details>
+          <summary>Contas de demonstracao</summary>
+          <table>
+            <thead><tr><th>Papel</th><th>E-mail</th><th>Senha</th></tr></thead>
+            <tbody>
+              <tr><td>Estudante</td><td>marina@codelab.local</td><td>123456</td></tr>
+              <tr><td>Administrador</td><td>admin@codelab.local</td><td>admin123</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </section>
+
+      <section id="session-section" hidden>
+        <h2>Sessao autenticada</h2>
+        <table>
+          <tbody>
+            <tr><th>ID</th><td id="user-id"></td></tr>
+            <tr><th>Nome</th><td id="user-name"></td></tr>
+            <tr><th>E-mail</th><td id="user-email"></td></tr>
+            <tr><th>Papel</th><td id="user-role"></td></tr>
+          </tbody>
+        </table>
+        <button id="logout-button" type="button">Sair</button>
+      </section>
+    </main>
+
+    <script src="/client.js"></script>
+  </body>
+</html>
