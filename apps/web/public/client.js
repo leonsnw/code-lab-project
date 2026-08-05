@@ -102,4 +102,4 @@ elements.logoutButton.addEventListener("click", async () => {
 loadSession().catch(() => showAuthentication());
 
 
-//teste
+//teste branch teste
