@@ -1,22 +1,20 @@
-name: codelab-official
-
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: codelab-official-postgres
+    container_name: codelab-postgres
     environment:
       POSTGRES_USER: codelab
       POSTGRES_PASSWORD: codelab
-      POSTGRES_DB: codelab_official
+      POSTGRES_DB: codelab
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - codelab_official_postgres_data:/var/lib/postgresql/data
+      - codelab_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U codelab -d codelab_official"]
+      test: ["CMD-SHELL", "pg_isready -U codelab -d codelab"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  codelab_official_postgres_data:
+  codelab_postgres_data:

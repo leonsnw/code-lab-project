@@ -1,7 +1,10 @@
 import { Router, type RequestHandler } from "express";
 import { rateLimit } from "express-rate-limit";
 import type { AuthService } from "./auth.service.js";
-import { clearSessionCookie, setSessionCookie } from "./session-cookie.js";
+import {
+  clearSessionCookie,
+  setSessionCookie
+} from "./session-cookie.js";
 
 interface AuthRouterDependencies {
   authService: AuthService;
@@ -26,18 +29,25 @@ export function createAuthRouter({
   router.post("/register", authRateLimit, async (request, response) => {
     const session = await authService.register(request.body);
     setSessionCookie(response, session.accessToken, production);
-    response.status(201).json({ message: "Conta criada com sucesso.", user: session.user });
+    response.status(201).json({
+      message: "Conta criada com sucesso.",
+      user: session.user
+    });
   });
 
   router.post("/login", authRateLimit, async (request, response) => {
     const session = await authService.login(request.body);
     setSessionCookie(response, session.accessToken, production);
-    response.json({ message: "Login realizado com sucesso.", user: session.user });
+    response.json({
+      message: "Login realizado com sucesso.",
+      user: session.user
+    });
   });
 
   router.post("/logout", requireAuth, (_request, response) => {
     clearSessionCookie(response, production);
     response.json({ message: "Logout realizado com sucesso." });
   });
+
   return router;
 }
