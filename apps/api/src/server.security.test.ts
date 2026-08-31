@@ -43,6 +43,9 @@ describe("configuracao de seguranca HTTP", () => {
     expect(allowed.headers).not.toHaveProperty("x-powered-by");
   });
 
+  // Cada tentativa executa um bcrypt.compare, inclusive para e-mail inexistente,
+  // para nao revelar a existencia da conta pelo tempo de resposta. As 21 tentativas
+  // sequenciais ultrapassam o limite padrao de 5s do Vitest sob instrumentacao de cobertura.
   it("limita tentativas repetidas de login", async () => {
     const app = createApp(new InMemoryStore(), {
       jwtSecret: "segredo-de-rate-limit-com-32-caracteres",
@@ -61,5 +64,5 @@ describe("configuracao de seguranca HTTP", () => {
     });
 
     expect(blocked.status).toBe(429);
-  });
+  }, 30000);
 });
