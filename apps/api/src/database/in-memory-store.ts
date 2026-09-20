@@ -8,6 +8,7 @@ import type {
   RatingSummary,
   ScoreSummary,
   Submission,
+  SubmissionStatus,
   User,
   UserCredentials,
   UserProgress
@@ -181,13 +182,15 @@ export class InMemoryStore implements CodeLabStore {
 
   async listSubmissions(
     userId?: string,
-    challengeId?: string
+    challengeId?: string,
+    status?: SubmissionStatus
   ): Promise<Submission[]> {
     return this.submissions
       .filter((submission) => !userId || submission.userId === userId)
       .filter(
         (submission) => !challengeId || submission.challengeId === challengeId
       )
+      .filter((submission) => !status || submission.status === status)
       .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
   }
 

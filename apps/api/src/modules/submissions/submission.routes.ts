@@ -21,7 +21,7 @@ export function createSubmissionRouter({
   requireAuth
 }: SubmissionRouterDependencies): Router {
   const router = Router();
-  const submissionRateLimit = rateLimit({
+const submissionRateLimit = rateLimit({
     windowMs: 5 * 60 * 1000,
     limit: 20,
     standardHeaders: "draft-8",
@@ -29,6 +29,12 @@ export function createSubmissionRouter({
     message: {
       error: "Muitas submissões. Aguarde alguns minutos antes de tentar novamente."
     }
+  });
+
+  const historyQuerySchema = z.object({
+    status: z
+      .enum(["pending", "accepted", "wrong_answer", "runtime_error", "timeout"])
+      .optional()
   });
 
   router.post(
@@ -53,12 +59,14 @@ export function createSubmissionRouter({
     }
   );
 
-  router.get("/submissions", requireAuth, async (_request, response) => {
+  router.get("/submissions", requireAuth, async (request, response) => {
     const user = getAuthenticatedUser(response);
+    const query = historyQuerySchema.parse(request.query);
     response.json({
-      submissions: (await store.listSubmissions(user.id)).map(
+      submissions: (await store.listSubmissions(user.id, undefined, query.status)).map(
         presentSubmission
-      )
+      ),
+      filters: { status: query.status ?? null }
     });
   });
 

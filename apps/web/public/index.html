@@ -185,6 +185,18 @@
 
       <section>
         <h2>5. Historico da conta autenticada</h2>
+        <p class="history-controls">
+          <label for="history-status-filter">Filtrar por status</label>
+          <select id="history-status-filter">
+            <option value="">Todos</option>
+            <option value="accepted">Aceitas</option>
+            <option value="wrong_answer">Respostas erradas</option>
+            <option value="runtime_error">Erros de execucao</option>
+            <option value="timeout">Timeouts</option>
+            <option value="pending">Aguardando avaliacao</option>
+          </select>
+          <button id="history-refresh" type="button">Atualizar historico</button>
+        </p>
         <div id="history">Carregando...</div>
       </section>
 

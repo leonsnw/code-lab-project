@@ -162,6 +162,40 @@ describe("API de autenticacao", () => {
     expect(JSON.stringify(response.body)).not.toContain("0 0");
   });
 
+  it("filtra o historico autenticado por status e rejeita status desconhecido", async () => {
+    const { app } = makeApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/register").send({
+      name: "Ana Silva",
+      email: "historico@email.com",
+      password: "123456"
+    });
+
+    await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({
+      language: "javascript",
+      sourceCode: validSolution
+    });
+    await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({
+      language: "javascript",
+      sourceCode: "console.log(999);"
+    });
+
+    const accepted = await agent.get("/api/submissions?status=accepted");
+    const wrongAnswer = await agent.get("/api/submissions?status=wrong_answer");
+    const all = await agent.get("/api/submissions");
+    const invalid = await agent.get("/api/submissions?status=unknown");
+
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.filters).toEqual({ status: "accepted" });
+    expect(accepted.body.submissions).toHaveLength(1);
+    expect(accepted.body.submissions[0].status).toBe("accepted");
+    expect(wrongAnswer.body.submissions).toHaveLength(1);
+    expect(wrongAnswer.body.submissions[0].status).toBe("wrong_answer");
+    expect(all.body.filters).toEqual({ status: null });
+    expect(all.body.submissions).toHaveLength(2);
+    expect(invalid.status).toBe(400);
+  });
+
   it("aceita logout como encerramento da sessao no cliente", async () => {
     const { app } = makeApp();
     const agent = request.agent(app);

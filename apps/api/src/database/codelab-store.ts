@@ -55,7 +55,11 @@ export interface CodeLabStore {
   deactivateChallenge(challengeId: string): Promise<Challenge>;
   addSubmission(submission: Submission): Promise<void>;
   completeSubmission(input: CompleteSubmissionInput): Promise<Submission>;
-  listSubmissions(userId?: string, challengeId?: string): Promise<Submission[]>;
+  listSubmissions(
+    userId?: string,
+    challengeId?: string,
+    status?: SubmissionStatus
+  ): Promise<Submission[]>;
   getScore(userId: string): Promise<ScoreSummary>;
   getUserProgress(userId: string): Promise<UserProgress>;
   getRanking(): Promise<RankingEntry[]>;

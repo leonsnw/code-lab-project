@@ -171,7 +171,7 @@ GET  /api/challenges/:slug/comments      # autenticado
 POST /api/challenges/:slug/comments      # autenticado
 GET  /api/challenges/:slug/rating        # autenticado
 PUT  /api/challenges/:slug/rating        # autenticado
-GET  /api/submissions                    # autenticado
+GET  /api/submissions                    # autenticado; aceita ?status=accepted|wrong_answer|runtime_error|timeout|pending
 GET  /api/ranking
 GET  /api/admin/challenges               # admin
 GET  /api/admin/challenges/:id           # admin
@@ -209,6 +209,14 @@ curl -b /tmp/codelab-cookies.txt \
 ```
 
 A identidade da submissao vem exclusivamente da sessao autenticada. Um `userId` enviado pelo cliente e ignorado.
+
+O historico pode ser filtrado por status. Sem o parametro `status`, todos os
+registros do usuario autenticado sao retornados:
+
+```bash
+curl -b /tmp/codelab-cookies.txt \
+  'http://localhost:3333/api/submissions?status=wrong_answer'
+```
 
 ## Testes
 

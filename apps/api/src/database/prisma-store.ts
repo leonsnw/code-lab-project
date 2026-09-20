@@ -318,12 +318,14 @@ export class PrismaStore implements CodeLabStore {
 
   async listSubmissions(
     userId?: string,
-    challengeId?: string
+    challengeId?: string,
+    status?: SubmissionStatus
   ): Promise<Submission[]> {
     const submissions = await this.prisma.submission.findMany({
       where: {
         userId,
-        challengeId
+        challengeId,
+        status: status ? toPrismaSubmissionStatus(status) : undefined
       },
       include: {
         testResults: true

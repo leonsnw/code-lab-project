@@ -52,6 +52,8 @@ const elements = {
   testResults: document.querySelector("#test-results"),
   submissionJson: document.querySelector("#submission-json"),
   history: document.querySelector("#history"),
+  historyStatusFilter: document.querySelector("#history-status-filter"),
+  historyRefresh: document.querySelector("#history-refresh"),
   ratingSummary: document.querySelector("#rating-summary"),
   ratingForm: document.querySelector("#rating-form"),
   ratingMessage: document.querySelector("#rating-message"),
@@ -272,8 +274,15 @@ async function loadChallenge() {
     ${renderPublicTests(challenge.publicTestCases)}
   `;
 
-  renderHistory(data.submissions);
+  await loadHistory();
   await loadCommunity();
+}
+
+async function loadHistory() {
+  const status = elements.historyStatusFilter.value;
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const data = await api(`/api/submissions${query}`);
+  renderHistory(data.submissions);
 }
 
 async function loadCommunity() {
@@ -835,6 +844,8 @@ elements.loginForm.addEventListener("submit", handleLogin);
 elements.registerForm.addEventListener("submit", handleRegister);
 elements.logoutButton.addEventListener("click", logout);
 elements.loadChallenge.addEventListener("click", loadChallenge);
+elements.historyStatusFilter.addEventListener("change", loadHistory);
+elements.historyRefresh.addEventListener("click", loadHistory);
 elements.submitSolution.addEventListener("click", submitSolution);
 elements.ratingForm.addEventListener("submit", rateChallenge);
 elements.commentForm.addEventListener("submit", addComment);
