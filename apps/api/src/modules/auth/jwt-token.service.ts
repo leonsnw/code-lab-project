@@ -28,12 +28,17 @@ export class JwtTokenService implements TokenService {
         issuer: TOKEN_ISSUER,
         audience: TOKEN_AUDIENCE
       }) as JwtPayload;
+
       if (payload.type !== "access" || typeof payload.sub !== "string") {
-        throw new Error("Token invalido.");
+        throw new Error("Token sem identidade valida.");
       }
+
       return { userId: payload.sub };
     } catch {
-      throw new DomainError("Sessao invalida ou expirada. Entre novamente.", 401);
+      throw new DomainError(
+        "Sessao invalida ou expirada. Entre novamente.",
+        401
+      );
     }
   }
 }

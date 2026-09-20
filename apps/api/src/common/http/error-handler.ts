@@ -12,10 +12,18 @@ export const errorHandler: ErrorRequestHandler = (
     response.status(error.statusCode).json({ error: error.message });
     return;
   }
+
   if (error instanceof z.ZodError) {
-    response.status(400).json({ error: "Entrada invalida." });
+    response.status(400).json({
+      error: "Entrada invalida.",
+      details: error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message
+      }))
+    });
     return;
   }
+
   console.error(error);
   response.status(500).json({ error: "Erro interno do servidor." });
 };

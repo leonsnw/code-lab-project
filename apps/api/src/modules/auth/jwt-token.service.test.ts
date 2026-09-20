@@ -9,14 +9,21 @@ const student = {
 };
 
 describe("JwtTokenService", () => {
-  it("emite e valida token com a identidade do usuario", () => {
+  it("emite e valida um token com a identidade do usuario", () => {
     const service = new JwtTokenService("segredo-de-teste-com-32-caracteres");
-    expect(service.verify(service.issue(student))).toEqual({ userId: student.id });
+
+    const token = service.issue(student);
+    const payload = service.verify(token);
+
+    expect(payload).toMatchObject({
+      userId: student.id
+    });
   });
 
   it("rejeita token adulterado ou assinado por outro segredo", () => {
     const issuer = new JwtTokenService("primeiro-segredo-com-32-caracteres");
     const verifier = new JwtTokenService("segundo-segredo-com-32-caracteres");
+
     expect(() => verifier.verify(issuer.issue(student))).toThrow(
       "Sessao invalida ou expirada. Entre novamente."
     );

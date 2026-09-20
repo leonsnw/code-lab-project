@@ -11,7 +11,10 @@ export function setSessionCookie(
   response.cookie(SESSION_COOKIE_NAME, token, cookieOptions(production));
 }
 
-export function clearSessionCookie(response: Response, production: boolean): void {
+export function clearSessionCookie(
+  response: Response,
+  production: boolean
+): void {
   const options = cookieOptions(production);
   delete options.maxAge;
   response.clearCookie(SESSION_COOKIE_NAME, options);
