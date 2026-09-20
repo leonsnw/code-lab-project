@@ -7,7 +7,10 @@ import { SESSION_COOKIE_NAME } from "./session-cookie.js";
 
 const AUTHENTICATED_USER_KEY = "authenticatedUser";
 
-export function createRequireAuth(store: CodeLabStore, tokenService: TokenService) {
+export function createRequireAuth(
+  store: CodeLabStore,
+  tokenService: TokenService
+) {
   return async (request: Request, response: Response, next: NextFunction) => {
     try {
       const authorization = request.header("Authorization");
@@ -16,11 +19,16 @@ export function createRequireAuth(store: CodeLabStore, tokenService: TokenServic
       if (typeof token !== "string" || !token) {
         throw new DomainError("Faca login para continuar.", 401);
       }
+
       const payload = tokenService.verify(token);
       const user = await store.findUserById(payload.userId);
       if (!user) {
-        throw new DomainError("Sessao invalida ou expirada. Entre novamente.", 401);
+        throw new DomainError(
+          "Sessao invalida ou expirada. Entre novamente.",
+          401
+        );
       }
+
       response.locals[AUTHENTICATED_USER_KEY] = user;
       next();
     } catch (error) {
@@ -32,7 +40,8 @@ export function createRequireAuth(store: CodeLabStore, tokenService: TokenServic
 export function requireRole(role: UserRole) {
   return (_request: Request, response: Response, next: NextFunction) => {
     try {
-      if (getAuthenticatedUser(response).role !== role) {
+      const user = getAuthenticatedUser(response);
+      if (user.role !== role) {
         throw new DomainError("Voce nao possui permissao para esta acao.", 403);
       }
       next();
@@ -44,6 +53,8 @@ export function requireRole(role: UserRole) {
 
 export function getAuthenticatedUser(response: Response): User {
   const user = response.locals[AUTHENTICATED_USER_KEY] as User | undefined;
-  if (!user) throw new DomainError("Faca login para continuar.", 401);
+  if (!user) {
+    throw new DomainError("Faca login para continuar.", 401);
+  }
   return user;
 }

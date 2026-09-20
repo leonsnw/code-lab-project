@@ -54,10 +54,16 @@ export class AuthService {
 
   async register(input: unknown): Promise<AuthSession> {
     const data = parseOrThrow(registerSchema, input);
-    if (await this.store.findUserCredentialsByEmail(data.email)) {
+    const existingUser = await this.store.findUserCredentialsByEmail(data.email);
+
+    if (existingUser) {
       throw new DomainError("E-mail ja cadastrado.", 409);
     }
-    const passwordHash = await this.passwordHasher.hash(data.password, SALT_ROUNDS);
+
+    const passwordHash = await this.passwordHasher.hash(
+      data.password,
+      SALT_ROUNDS
+    );
     const user = await this.store.createUser({
       id: randomUUID(),
       name: data.name,
@@ -65,6 +71,7 @@ export class AuthService {
       passwordHash,
       role: "student"
     });
+
     return this.startSession(user);
   }
 
@@ -76,18 +83,23 @@ export class AuthService {
       credentials?.passwordHash ?? DUMMY_PASSWORD_HASH
     );
     if (!credentials || !matches) {
-      throw new DomainError("E-mail ou senha invalidos.", 401);
+      throw invalidCredentialsError();
     }
-    return this.startSession({
+
+    const user: User = {
       id: credentials.id,
       name: credentials.name,
       email: credentials.email,
       role: credentials.role
-    });
+    };
+    return this.startSession(user);
   }
 
   private startSession(user: User): AuthSession {
-    return { user, accessToken: this.tokenService.issue(user) };
+    return {
+      user,
+      accessToken: this.tokenService.issue(user)
+    };
   }
 }
 
@@ -100,4 +112,8 @@ function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
     );
   }
   return result.data;
+}
+
+function invalidCredentialsError(): DomainError {
+  return new DomainError("E-mail ou senha invalidos.", 401);
 }
