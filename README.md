@@ -150,7 +150,9 @@ Cada submissao e registrada antes da execucao. O avaliador executa cada caso em 
 - timeout de 1,5 segundo por caso;
 - limpeza do diretorio temporario ao terminar.
 
-Casos privados sao usados no calculo, mas a resposta HTTP informa somente se passaram, o status de execucao e a duracao. Entrada, saida esperada, saida recebida, erro e identificador privado nao saem da API.
+Casos privados sao usados no calculo, mas nao sao retornados individualmente pela API. A resposta apresenta um feedback agregado informando se existem casos ocultos e se algum falhou. Entrada, saida esperada, saida recebida, erro e identificador privado nao saem da API. Casos publicos exibem detalhes suficientes para comparar a saida recebida com a esperada.
+
+Cada usuario pode enviar no maximo 20 submissões a cada cinco minutos. O catalogo administrativo exige pelo menos um caso publico e um caso oculto por desafio, evitando que uma solucao baseada apenas no exemplo visivel seja aceita.
 
 Um worker em container dedicado ainda e a evolucao recomendada antes de exposicao publica em escala. A implementacao atual atende ao ambiente academico controlado definido no RFC e reduz os principais riscos do processo local.
 

@@ -65,4 +65,28 @@ describe("configuracao de seguranca HTTP", () => {
 
     expect(blocked.status).toBe(429);
   }, 30000);
+
+  it("limita tentativas repetidas de submissao para proteger os casos ocultos", async () => {
+    const app = createApp(new InMemoryStore(), {
+      jwtSecret: "segredo-de-rate-limit-submissao-32-caracteres",
+      environment: "test"
+    });
+    const agent = request.agent(app);
+    await agent.post("/api/auth/login").send({
+      email: "marina@codelab.local",
+      password: "123456"
+    });
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({
+        language: "javascript",
+        sourceCode: "console.log(999);"
+      });
+    }
+
+    await agent
+      .post("/api/challenges/soma-de-dois-numeros/submissions")
+      .send({ language: "javascript", sourceCode: "console.log(999);" })
+      .expect(429);
+  }, 30000);
 });

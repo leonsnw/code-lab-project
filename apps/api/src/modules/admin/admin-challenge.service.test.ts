@@ -85,7 +85,7 @@ describe("AdminChallengeService", () => {
       slug: "soma-dos-elementos",
       difficulty: "medium",
       points: 180,
-      testCases: [challengeInput.testCases[0]]
+      testCases: challengeInput.testCases
     });
 
     expect(updated).toMatchObject({
@@ -96,7 +96,7 @@ describe("AdminChallengeService", () => {
       difficulty: "medium",
       points: 180
     });
-    expect(updated.testCases).toHaveLength(1);
+    expect(updated.testCases).toHaveLength(2);
     expect(updated.testCases[0].id).toBe("tc-editado");
   });
 
@@ -115,5 +115,36 @@ describe("AdminChallengeService", () => {
     expect(
       adminChallenges.find((item) => item.id === "challenge-soma")?.isActive
     ).toBe(false);
+  });
+
+  it("exige casos publicos e ocultos para evitar submissao baseada em gabarito visivel", async () => {
+    const service = makeService();
+
+    await expect(
+      service.create("user-admin", {
+        ...challengeInput,
+        testCases: [challengeInput.testCases[0]]
+      })
+    ).rejects.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          message: "Cadastre ao menos um caso publico e um caso oculto."
+        })
+      ])
+    });
+
+    await expect(
+      service.create("user-admin", {
+        ...challengeInput,
+        testCases: challengeInput.testCases.map((testCase) => ({
+          ...testCase,
+          isPublic: true
+        }))
+      })
+    ).rejects.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({ message: "Cadastre ao menos um caso de teste oculto." })
+      ])
+    });
   });
 });

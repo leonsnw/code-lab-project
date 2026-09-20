@@ -83,14 +83,14 @@ describe("API administrativa de desafios", () => {
         ...payload,
         title: "Contador de Vogais",
         points: 110,
-        testCases: [payload.testCases[0]]
+        testCases: payload.testCases
       });
     expect(edition.status).toBe(200);
     expect(edition.body.challenge).toMatchObject({
       title: "Contador de Vogais",
       points: 110
     });
-    expect(edition.body.challenge.testCases).toHaveLength(1);
+    expect(edition.body.challenge.testCases).toHaveLength(2);
 
     const publicList = await request(app).get("/api/challenges");
     expect(

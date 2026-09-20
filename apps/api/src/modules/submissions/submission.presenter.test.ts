@@ -3,7 +3,7 @@ import type { Submission } from "../../domain/types.js";
 import { presentSubmission } from "./submission.presenter.js";
 
 describe("presentSubmission", () => {
-  it("exibe detalhes publicos e oculta todo o conteudo dos casos privados", () => {
+  it("exibe detalhes publicos e remove completamente os casos privados", () => {
     const submission: Submission = {
       id: "submission-1",
       userId: "user-1",
@@ -48,11 +48,13 @@ describe("presentSubmission", () => {
     expect(serialized).not.toContain("saida-privada-secreta");
     expect(serialized).not.toContain("resposta-privada");
     expect(serialized).not.toContain("erro-privado");
-    expect(presented.testResults[1]).toEqual({
-      executionStatus: "completed",
-      isPublic: false,
-      passed: false,
-      durationMs: 12
+    expect(presented.testResults).toHaveLength(1);
+    expect(presented.feedback).toEqual({
+      message: "Resposta incorreta. Um ou mais casos ocultos falharam; as entradas e saidas privadas nao sao exibidas.",
+      publicTestsPassed: 1,
+      publicTestsTotal: 1,
+      hiddenTestsPresent: true,
+      hiddenTestsFailed: true
     });
   });
 });

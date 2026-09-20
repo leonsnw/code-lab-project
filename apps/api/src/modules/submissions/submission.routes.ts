@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from "express";
+import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import type { CodeLabStore } from "../../database/codelab-store.js";
 import { getAuthenticatedUser } from "../auth/auth.middleware.js";
@@ -20,10 +21,20 @@ export function createSubmissionRouter({
   requireAuth
 }: SubmissionRouterDependencies): Router {
   const router = Router();
+  const submissionRateLimit = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Muitas submissões. Aguarde alguns minutos antes de tentar novamente."
+    }
+  });
 
   router.post(
     "/challenges/:slug/submissions",
     requireAuth,
+    submissionRateLimit,
     async (request, response) => {
       const user = getAuthenticatedUser(response);
       const challengeSlug = z.string().parse(request.params.slug);

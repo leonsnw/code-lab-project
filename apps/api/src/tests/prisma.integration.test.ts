@@ -279,6 +279,12 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
             expectedOutput: "3",
             isPublic: true,
             weight: 2
+          },
+          {
+            input: "4",
+            expectedOutput: "4",
+            isPublic: false,
+            weight: 1
           }
         ]
       });
@@ -298,9 +304,9 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
         points: 140,
         tags: [secondTag]
       });
-      expect(updated.testCases).toHaveLength(1);
+      expect(updated.testCases).toHaveLength(2);
       expect(removed.isActive).toBe(false);
-      expect(persisted?.testCases).toHaveLength(1);
+      expect(persisted?.testCases).toHaveLength(2);
       expect(persisted?.tags.map((item) => item.tag.name)).toEqual([secondTag]);
       expect(publicChallenges.some((item) => item.id === created.id)).toBe(false);
       expect(
@@ -358,6 +364,12 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
             input: "1",
             expectedOutput: "1",
             isPublic: true,
+            weight: 1
+          },
+          {
+            input: "2",
+            expectedOutput: "2",
+            isPublic: false,
             weight: 1
           }
         ]

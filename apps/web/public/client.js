@@ -728,15 +728,16 @@ async function submitSolution() {
 
 function renderSubmissionResult(data) {
   const submission = data.submission;
-  const passed = submission.testResults.filter((test) => test.passed).length;
-  const total = submission.testResults.length;
+  const feedback = submission.feedback;
 
   elements.resultSummary.className = `summary ${submission.status}`;
   elements.resultSummary.innerHTML = `
+    <p><strong>${escapeHtml(feedback.message)}</strong></p>
     <table>
       <tbody>
         <tr><th>Status</th><td>${statusBadge(submission.status)}</td></tr>
-        <tr><th>Testes que passaram</th><td>${passed}/${total}</td></tr>
+        <tr><th>Casos publicos aprovados</th><td>${feedback.publicTestsPassed}/${feedback.publicTestsTotal}</td></tr>
+        ${feedback.hiddenTestsPresent ? `<tr><th>Casos ocultos</th><td>${feedback.hiddenTestsFailed ? "Um ou mais falharam" : "Aprovados"}</td></tr>` : ""}
         <tr><th>Pontos nesta submissao</th><td>${submission.scoreAwarded}</td></tr>
         <tr><th>Pontuacao total</th><td>${data.score.totalPoints}</td></tr>
         <tr><th>Enviada em</th><td>${formatDate(submission.submittedAt)}</td></tr>
@@ -749,8 +750,12 @@ function renderSubmissionResult(data) {
 }
 
 function renderTestResults(testResults) {
+  if (!testResults.length) {
+    return "<p>Nenhum caso publico para detalhar. O resultado dos casos ocultos permanece protegido.</p>";
+  }
+
   return `
-    <h3>Casos avaliados</h3>
+    <h3>Casos publicos avaliados</h3>
     <table>
       <thead>
         <tr>
@@ -768,12 +773,12 @@ function renderTestResults(testResults) {
           .map(
             (test) => `
               <tr class="${test.passed ? "passed" : "failed"}">
-                <td>${test.isPublic ? "Publico" : "Privado"}</td>
+                <td>Publico</td>
                 <td>${executionLabels[test.executionStatus] ?? test.executionStatus}</td>
                 <td>${test.passed ? "Sim" : "Nao"}</td>
-                <td><pre>${test.isPublic ? escapeHtml(test.input) : "Oculto"}</pre></td>
-                <td><pre>${test.isPublic ? escapeHtml(test.expectedOutput) : "Oculto"}</pre></td>
-                <td><pre>${test.isPublic ? escapeHtml(test.actualOutput || test.error || "") : "Oculto"}</pre></td>
+                <td><pre>${escapeHtml(test.input)}</pre></td>
+                <td><pre>${escapeHtml(test.expectedOutput)}</pre></td>
+                <td><pre>${escapeHtml(test.actualOutput || test.error || "")}</pre></td>
                 <td>${test.durationMs} ms</td>
               </tr>
             `
@@ -803,13 +808,13 @@ function renderHistory(submissions) {
       <tbody>
         ${submissions
           .map((submission) => {
-            const passed = submission.testResults.filter((test) => test.passed).length;
+            const feedback = submission.feedback;
             return `
               <tr>
                 <td>${formatDate(submission.submittedAt)}</td>
                 <td>${statusBadge(submission.status)}</td>
                 <td>${submission.scoreAwarded}</td>
-                <td>${passed}/${submission.testResults.length}</td>
+                <td>${feedback.publicTestsPassed}/${feedback.publicTestsTotal}${feedback.hiddenTestsPresent ? " + ocultos" : ""}</td>
               </tr>
             `;
           })

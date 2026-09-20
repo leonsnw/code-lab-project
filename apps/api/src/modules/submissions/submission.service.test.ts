@@ -89,6 +89,23 @@ describe("SubmissionService", () => {
     });
   });
 
+  it("rejeita solucao que apenas imprime a resposta do exemplo publico", async () => {
+    const { store, submissionService } = makeService();
+
+    const submission = await submissionService.submit({
+      userId: defaultStudentId,
+      challengeSlug: "soma-de-dois-numeros",
+      language: "javascript",
+      sourceCode: "console.log(8);"
+    });
+
+    expect(submission.status).toBe("wrong_answer");
+    expect(submission.scoreAwarded).toBe(0);
+    await expect(store.getScore(defaultStudentId)).resolves.toMatchObject({
+      totalPoints: 0
+    });
+  });
+
   it("valida codigo vazio antes de criar submissao", () => {
     const result = createSubmissionSchema.safeParse({
       language: "javascript",

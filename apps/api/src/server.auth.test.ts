@@ -124,12 +124,42 @@ describe("API de autenticacao", () => {
 
     expect(response.status).toBe(201);
     expect(response.body.submission.userId).toBe(registration.body.user.id);
+    expect(response.body.submission.feedback).toMatchObject({
+      publicTestsPassed: 1,
+      publicTestsTotal: 1,
+      hiddenTestsPresent: true,
+      hiddenTestsFailed: false
+    });
     expect(JSON.stringify(response.body)).not.toContain("-2 10");
     expect(JSON.stringify(response.body)).not.toContain("tc-soma-privado-1");
 
     const history = await agent.get("/api/submissions?userId=user-marina");
     expect(history.body.submissions).toHaveLength(1);
     expect(history.body.submissions[0].userId).toBe(registration.body.user.id);
+  });
+
+  it("explica a falha publica sem revelar os casos ocultos", async () => {
+    const { app } = makeApp();
+    const agent = request.agent(app);
+    await agent.post("/api/auth/register").send({
+      name: "Ana Silva",
+      email: "feedback@email.com",
+      password: "123456"
+    });
+
+    const response = await agent
+      .post("/api/challenges/soma-de-dois-numeros/submissions")
+      .send({ language: "javascript", sourceCode: "console.log(999);" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.submission.status).toBe("wrong_answer");
+    expect(response.body.submission.feedback.message).toContain(
+      "casos publicos que falharam"
+    );
+    expect(response.body.submission.feedback.hiddenTestsFailed).toBe(true);
+    expect(response.body.submission.testResults).toHaveLength(1);
+    expect(JSON.stringify(response.body)).not.toContain("-2 10");
+    expect(JSON.stringify(response.body)).not.toContain("0 0");
   });
 
   it("aceita logout como encerramento da sessao no cliente", async () => {

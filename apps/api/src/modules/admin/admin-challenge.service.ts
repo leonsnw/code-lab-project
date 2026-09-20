@@ -38,7 +38,25 @@ const challengePayloadSchema = z.object({
   constraints: z.array(z.string().trim().min(1).max(500)).max(20),
   tags: z.array(tagSchema).min(1).max(10),
   examples: z.array(exampleSchema).max(10),
-  testCases: z.array(testCaseSchema).min(1).max(50)
+  testCases: z
+    .array(testCaseSchema)
+    .min(2, "Cadastre ao menos um caso publico e um caso oculto.")
+    .max(50)
+}).superRefine((payload, context) => {
+  if (!payload.testCases.some((testCase) => testCase.isPublic)) {
+    context.addIssue({
+      code: "custom",
+      path: ["testCases"],
+      message: "Cadastre ao menos um caso de teste publico."
+    });
+  }
+  if (!payload.testCases.some((testCase) => !testCase.isPublic)) {
+    context.addIssue({
+      code: "custom",
+      path: ["testCases"],
+      message: "Cadastre ao menos um caso de teste oculto."
+    });
+  }
 });
 
 const updateChallengePayloadSchema = challengePayloadSchema.extend({

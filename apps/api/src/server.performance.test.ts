@@ -104,6 +104,12 @@ describe("RNF03 - tempo de resposta das requisicoes comuns", () => {
           expectedOutput: "1",
           isPublic: true,
           weight: 1
+        },
+        {
+          input: "2",
+          expectedOutput: "2",
+          isPublic: false,
+          weight: 1
         }
       ]
     });
