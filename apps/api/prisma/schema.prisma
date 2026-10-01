@@ -20,6 +20,8 @@ enum Difficulty {
 
 enum SubmissionLanguage {
   JAVASCRIPT
+  C
+  PYTHON
 }
 
 enum SubmissionStatus {
@@ -28,6 +30,14 @@ enum SubmissionStatus {
   WRONG_ANSWER
   RUNTIME_ERROR
   TIMEOUT
+  COMPILE_ERROR
+  INTERNAL_ERROR
+  RULE_VIOLATION
+}
+
+enum AuthTokenKind {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
 }
 
 enum ExecutionStatus {
@@ -42,6 +52,7 @@ model User {
   email       String       @unique
   passwordHash String      @map("password_hash")
   role        UserRole     @default(STUDENT)
+  emailVerifiedAt DateTime? @map("email_verified_at")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
@@ -50,6 +61,11 @@ model User {
   ratings     Rating[]
   score       Score?
   submissions Submission[]
+  lessonCompletions LessonCompletion[]
+  challengeUnlocks  ChallengeUnlock[]
+  authTokens        AuthToken[]
+  ownedClasses      ClassGroup[]
+  classMemberships  ClassMember[]
 
   @@map("users")
 }
@@ -63,12 +79,30 @@ model Challenge {
   points      Int
   constraints String[]
   examples    Json
+  languages   Json         @default("[]")
+  mode        String       @default("stdio")
+  functionSpec Json?       @map("function_spec")
+  checker     Json         @default("{\"kind\":\"exact\"}")
+  timeLimitMs Int?         @map("time_limit_ms")
+  memoryLimitMb Int?       @map("memory_limit_mb")
+  topic       String       @default("Lógica de Programação")
+  subtopic    String       @default("")
+  moduleId    String?      @map("module_id")
+  position    Int          @default(0)
+  isBoss      Boolean      @default(false) @map("is_boss")
+  hints       Json         @default("[]")
+  editorial   String?
+  complexity  Json?
+  followUps   String[]     @default([]) @map("follow_ups")
   isActive    Boolean      @default(true) @map("is_active")
+  isPublished Boolean      @default(true) @map("is_published")
   createdBy   String       @map("created_by")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
   creator     User         @relation("ChallengeCreator", fields: [createdBy], references: [id])
+  module      Module?      @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  unlocks     ChallengeUnlock[]
   comments    Comment[]
   ratings     Rating[]
   submissions Submission[]
@@ -77,7 +111,89 @@ model Challenge {
 
   @@index([difficulty])
   @@index([isActive])
+  @@index([topic])
+  @@index([moduleId])
   @@map("challenges")
+}
+
+model Track {
+  id          String   @id
+  slug        String   @unique
+  title       String
+  description String
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  modules     Module[]
+
+  @@map("tracks")
+}
+
+model Module {
+  id               String   @id
+  trackId          String   @map("track_id")
+  slug             String   @unique
+  title            String
+  objective        String
+  concept          String
+  estimatedMinutes Int      @default(30) @map("estimated_minutes")
+  position         Int      @default(0)
+  prerequisiteIds  String[] @default([]) @map("prerequisite_ids")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  track            Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  lessons          Lesson[]
+  challenges       Challenge[]
+
+  @@index([trackId])
+  @@map("modules")
+}
+
+model Lesson {
+  id               String   @id
+  moduleId         String   @map("module_id")
+  slug             String   @unique
+  title            String
+  summary          String
+  content          String
+  estimatedMinutes Int      @default(10) @map("estimated_minutes")
+  position         Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  module           Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completions      LessonCompletion[]
+
+  @@index([moduleId])
+  @@map("lessons")
+}
+
+model LessonCompletion {
+  userId      String   @map("user_id")
+  lessonId    String   @map("lesson_id")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lessonId])
+  @@map("lesson_completions")
+}
+
+model ChallengeUnlock {
+  userId           String   @map("user_id")
+  challengeId      String   @map("challenge_id")
+  hintsRevealed    Int      @default(0) @map("hints_revealed")
+  solutionRevealed Boolean  @default(false) @map("solution_revealed")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge        Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, challengeId])
+  @@map("challenge_unlocks")
 }
 
 model TestCase {
@@ -106,6 +222,10 @@ model Submission {
   scoreAwarded Int                   @default(0) @map("score_awarded")
   submittedAt  DateTime              @map("submitted_at")
   evaluatedAt  DateTime?             @map("evaluated_at")
+  totalTests   Int                   @default(0) @map("total_tests")
+  passedTests  Int                   @default(0) @map("passed_tests")
+  errorMessage String?               @map("error_message")
+  compileWarnings String?            @map("compile_warnings")
 
   challenge    Challenge             @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -122,12 +242,14 @@ model SubmissionTestResult {
   id              String          @id
   submissionId    String          @map("submission_id")
   testCaseId      String          @map("test_case_id")
+  position        Int             @default(0)
   executionStatus ExecutionStatus @map("execution_status")
   isPublic        Boolean         @map("is_public")
   passed          Boolean
   input           String
   expectedOutput  String          @map("expected_output")
   actualOutput    String          @map("actual_output")
+  stderr          String?
   error           String?
   durationMs      Int             @map("duration_ms")
 
@@ -198,4 +320,46 @@ model ChallengeTag {
 
   @@id([challengeId, tagId])
   @@map("challenge_tags")
+}
+
+model AuthToken {
+  id        String        @id
+  userId    String        @map("user_id")
+  kind      AuthTokenKind
+  tokenHash String        @unique @map("token_hash")
+  expiresAt DateTime      @map("expires_at")
+  usedAt    DateTime?     @map("used_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@map("auth_tokens")
+}
+
+model ClassGroup {
+  id        String        @id
+  name      String
+  code      String        @unique
+  ownerId   String        @map("owner_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members   ClassMember[]
+
+  @@index([ownerId])
+  @@map("classes")
+}
+
+model ClassMember {
+  classId   String     @map("class_id")
+  userId    String     @map("user_id")
+  joinedAt  DateTime   @default(now()) @map("joined_at")
+
+  classGroup ClassGroup @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([classId, userId])
+  @@index([userId])
+  @@map("class_members")
 }

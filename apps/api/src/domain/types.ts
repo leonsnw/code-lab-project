@@ -2,14 +2,78 @@ export type UserRole = "student" | "admin";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
-export type SubmissionLanguage = "javascript";
+export type SubmissionLanguage = "javascript" | "c" | "python";
+
+export const SUBMISSION_LANGUAGES: SubmissionLanguage[] = ["javascript", "c", "python"];
 
 export type SubmissionStatus =
   | "pending"
   | "accepted"
   | "wrong_answer"
   | "runtime_error"
-  | "timeout";
+  | "timeout"
+  | "compile_error"
+  | "rule_violation"
+  | "internal_error";
+
+/**
+ * Regra sobre o código-fonte, avaliada sem comentários e literais.
+ * `recursion` exige uma função que chame a si mesma; com `minDepth`, o juiz
+ * também mede (em C) a profundidade real de chamadas durante os testes.
+ */
+export type SourceRule =
+  | { kind: "forbid"; pattern: string; message: string }
+  | { kind: "require"; pattern: string; message: string }
+  | { kind: "recursion"; message: string; minDepth?: number };
+
+/** `stdio`: o programa lê a entrada e imprime. `function`: o aluno implementa uma função. */
+export type ChallengeMode = "stdio" | "function";
+
+export type ValueType =
+  | "int"
+  | "long"
+  | "double"
+  | "bool"
+  | "string"
+  | "int[]"
+  | "double[]"
+  | "string[]"
+  | "int[][]"
+  | "list"
+  | "tree";
+
+export interface FunctionSpec {
+  name: string;
+  params: Array<{ name: string; type: ValueType }>;
+  returns: ValueType;
+  /**
+   * Parâmetro do tipo `list` que recebe um ciclo: o caso de teste traz um
+   * argumento extra no fim (posição do nó para onde o último aponta, ou -1),
+   * usado só pelo juiz e invisível para a função do aluno.
+   */
+  cycleParam?: string;
+}
+
+/** Como comparar a saída do aluno com a esperada. */
+export type OutputChecker =
+  | { kind: "exact" }
+  | { kind: "tolerance"; epsilon: number }
+  | { kind: "unordered-lines" }
+  | { kind: "unordered-tokens" }
+  | { kind: "custom"; code: string };
+
+export interface ChallengeLanguage {
+  language: SubmissionLanguage;
+  sourceRules: SourceRule[];
+  starterCode?: string;
+}
+
+export interface Complexity {
+  time: string;
+  space: string;
+}
+
+export type ExecutionStatus = "completed" | "runtime_error" | "timeout";
 
 export interface User {
   id: string;
@@ -54,19 +118,78 @@ export interface Challenge {
   constraints: string[];
   tags: string[];
   examples: ChallengeExample[];
+  languages: ChallengeLanguage[];
+  mode: ChallengeMode;
+  functionSpec: FunctionSpec | null;
+  checker: OutputChecker;
+  timeLimitMs: number | null;
+  memoryLimitMb: number | null;
+  topic: string;
+  subtopic: string;
+  moduleId: string | null;
+  position: number;
+  isBoss: boolean;
+  hints: string[];
+  editorial: string | null;
+  complexity: Complexity | null;
+  followUps: string[];
   testCases: TestCase[];
   isActive: boolean;
+  /** Rascunho (false) só aparece para administradores. Ausente = publicado. */
+  isPublished?: boolean;
   createdBy: string;
+}
+
+export interface Lesson {
+  id: string;
+  moduleId: string;
+  slug: string;
+  title: string;
+  summary: string;
+  content: string;
+  estimatedMinutes: number;
+  position: number;
+}
+
+export interface LearningModule {
+  id: string;
+  trackId: string;
+  slug: string;
+  title: string;
+  objective: string;
+  concept: string;
+  estimatedMinutes: number;
+  position: number;
+  prerequisiteIds: string[];
+  lessons: Lesson[];
+}
+
+export interface Track {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  position: number;
+  modules: LearningModule[];
+}
+
+export interface ChallengeUnlock {
+  userId: string;
+  challengeId: string;
+  hintsRevealed: number;
+  solutionRevealed: boolean;
 }
 
 export interface SubmissionTestResult {
   testCaseId: string;
-  executionStatus: "completed" | "runtime_error" | "timeout";
+  position: number;
+  executionStatus: ExecutionStatus;
   isPublic: boolean;
   passed: boolean;
   input: string;
   expectedOutput: string;
   actualOutput: string;
+  stderr?: string;
   error?: string;
   durationMs: number;
 }
@@ -81,6 +204,10 @@ export interface Submission {
   scoreAwarded: number;
   submittedAt: Date;
   evaluatedAt: Date | null;
+  totalTests: number;
+  passedTests: number;
+  errorMessage: string | null;
+  compileWarnings: string | null;
   testResults: SubmissionTestResult[];
 }
 
@@ -135,4 +262,45 @@ export interface RatingSummary {
   average: number;
   total: number;
   currentUserValue: number | null;
+}
+
+// ---------- Conta ----------
+export interface AccountStatus {
+  emailVerifiedAt: Date | null;
+  createdAt: Date;
+}
+
+export type AuthTokenKind = "password_reset" | "email_verification";
+
+export interface AuthToken {
+  id: string;
+  userId: string;
+  kind: AuthTokenKind;
+  /** SHA-256 do token enviado por e-mail; o token em si nunca é guardado. */
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  passwordHash?: string;
+  emailVerifiedAt?: Date;
+}
+
+// ---------- Turmas ----------
+export interface ClassGroup {
+  id: string;
+  name: string;
+  /** Código que os estudantes usam para entrar na turma. */
+  code: string;
+  ownerId: string;
+  createdAt: Date;
+}
+
+export interface ClassMember {
+  classId: string;
+  userId: string;
+  joinedAt: Date;
 }

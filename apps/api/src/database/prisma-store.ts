@@ -1,4 +1,5 @@
 import {
+  AuthTokenKind as PrismaAuthTokenKind,
   Difficulty as PrismaDifficulty,
   ExecutionStatus as PrismaExecutionStatus,
   Prisma,
@@ -13,6 +14,12 @@ import { calculateScoreAward } from "../domain/scoring.js";
 import { buildUserProgress } from "../domain/progress.js";
 import type { AdminStatisticsData } from "../domain/admin-statistics.js";
 import type {
+  AccountStatus,
+  AuthToken,
+  AuthTokenKind,
+  ClassGroup,
+  ClassMember,
+  UpdateUserInput,
   Challenge,
   ChallengeExample,
   Comment,
@@ -25,7 +32,14 @@ import type {
   Submission,
   SubmissionLanguage,
   SubmissionStatus,
+  SourceRule,
   SubmissionTestResult,
+  ChallengeLanguage,
+  ChallengeUnlock,
+  Complexity,
+  FunctionSpec,
+  OutputChecker,
+  Track,
   User,
   UserCredentials,
   UserProgress,
@@ -50,6 +64,8 @@ const challengeInclude = {
     }
   }
 };
+
+const CATALOG_TTL_MS = 30_000;
 
 type PrismaChallengeWithRelations = Prisma.ChallengeGetPayload<{
   include: typeof challengeInclude;
@@ -100,33 +116,72 @@ export class PrismaStore implements CodeLabStore {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        throw new DomainError("E-mail ja cadastrado.", 409);
+        throw new DomainError("E-mail já cadastrado.", 409);
       }
       throw error;
     }
   }
 
-  async listChallenges(difficulty?: Difficulty): Promise<Challenge[]> {
-    const challenges = await this.prisma.challenge.findMany({
-      where: {
-        isActive: true,
-        difficulty: difficulty ? toPrismaDifficulty(difficulty) : undefined
-      },
-      include: challengeInclude,
-      orderBy: [{ difficulty: "asc" }, { title: "asc" }]
-    });
+  /**
+   * O catálogo tem milhares de casos de teste (alguns com dezenas de KB) e é
+   * lido em quase toda tela. Fica em memória por alguns segundos; escritas
+   * feitas por este processo invalidam na hora. Um seed rodado em outro
+   * processo aparece em até CATALOG_TTL_MS.
+   */
+  private catalogCache: { expiresAt: number; challenges: Promise<Challenge[]> } | null = null;
 
-    return challenges.map(mapChallenge);
+  private invalidateCatalog() {
+    this.catalogCache = null;
+  }
+
+  private loadAllChallenges(): Promise<Challenge[]> {
+    if (this.catalogCache && this.catalogCache.expiresAt > Date.now()) return this.catalogCache.challenges;
+    const challenges = this.prisma.challenge
+      .findMany({ include: challengeInclude, orderBy: [{ isActive: "desc" }, { title: "asc" }] })
+      .then((rows) => rows.map(mapChallenge));
+    this.catalogCache = { expiresAt: Date.now() + CATALOG_TTL_MS, challenges };
+    challenges.catch(() => this.invalidateCatalog());
+    return challenges;
+  }
+
+  async listChallenges(difficulty?: Difficulty): Promise<Challenge[]> {
+    const order = { easy: 0, medium: 1, hard: 2 } as const;
+    return (await this.loadAllChallenges())
+      .filter((challenge) => challenge.isActive && challenge.isPublished !== false && (!difficulty || challenge.difficulty === difficulty))
+      .sort((a, b) => order[a.difficulty] - order[b.difficulty] || a.title.localeCompare(b.title));
   }
 
   async listAllChallenges(): Promise<Challenge[]> {
-    const challenges = await this.prisma.challenge.findMany({
-      include: challengeInclude,
-      orderBy: [{ isActive: "desc" }, { title: "asc" }]
-    });
-
-    return challenges.map(mapChallenge);
+    return [...(await this.loadAllChallenges())];
   }
+
+  async createChallenge(challenge: Challenge): Promise<Challenge> {
+    try {
+      return await this.createChallengeRaw(challenge);
+    } finally {
+      // Invalida depois da escrita: uma leitura durante a escrita não fica em cache.
+      this.invalidateCatalog();
+    }
+  }
+
+  async updateChallenge(challenge: Challenge): Promise<Challenge> {
+    try {
+      return await this.updateChallengeRaw(challenge);
+    } finally {
+      // Invalida depois da escrita: uma leitura durante a escrita não fica em cache.
+      this.invalidateCatalog();
+    }
+  }
+
+  async deactivateChallenge(challengeId: string): Promise<Challenge> {
+    try {
+      return await this.deactivateChallengeRaw(challengeId);
+    } finally {
+      // Invalida depois da escrita: uma leitura durante a escrita não fica em cache.
+      this.invalidateCatalog();
+    }
+  }
+
 
   async findChallengeById(challengeId: string): Promise<Challenge | undefined> {
     const challenge = await this.prisma.challenge.findUnique({
@@ -141,7 +196,7 @@ export class PrismaStore implements CodeLabStore {
     return challenge ? mapChallenge(challenge) : undefined;
   }
 
-  async createChallenge(challenge: Challenge): Promise<Challenge> {
+  private async createChallengeRaw(challenge: Challenge): Promise<Challenge> {
     try {
       const created = await this.prisma.challenge.create({
         data: buildChallengeCreateData(challenge),
@@ -153,7 +208,7 @@ export class PrismaStore implements CodeLabStore {
     }
   }
 
-  async updateChallenge(challenge: Challenge): Promise<Challenge> {
+  private async updateChallengeRaw(challenge: Challenge): Promise<Challenge> {
     try {
       const updated = await this.prisma.challenge.update({
         where: { id: challenge.id },
@@ -165,7 +220,10 @@ export class PrismaStore implements CodeLabStore {
           points: challenge.points,
           constraints: challenge.constraints,
           examples: challenge.examples as unknown as Prisma.InputJsonValue,
+          ...challengeContentData(challenge),
+          module: challenge.moduleId ? { connect: { id: challenge.moduleId } } : { disconnect: true },
           isActive: challenge.isActive,
+          isPublished: challenge.isPublished !== false,
           tags: {
             deleteMany: {},
             create: buildChallengeTags(challenge.tags)
@@ -183,7 +241,7 @@ export class PrismaStore implements CodeLabStore {
     }
   }
 
-  async deactivateChallenge(challengeId: string): Promise<Challenge> {
+  private async deactivateChallengeRaw(challengeId: string): Promise<Challenge> {
     try {
       const challenge = await this.prisma.challenge.update({
         where: { id: challengeId },
@@ -208,19 +266,12 @@ export class PrismaStore implements CodeLabStore {
         scoreAwarded: submission.scoreAwarded,
         submittedAt: submission.submittedAt,
         evaluatedAt: submission.evaluatedAt,
+        totalTests: submission.totalTests,
+        passedTests: submission.passedTests,
+        errorMessage: submission.errorMessage,
+        compileWarnings: submission.compileWarnings,
         testResults: {
-          create: submission.testResults.map((result) => ({
-            id: randomUUID(),
-            testCaseId: result.testCaseId,
-            executionStatus: toPrismaExecutionStatus(result.executionStatus),
-            isPublic: result.isPublic,
-            passed: result.passed,
-            input: result.input,
-            expectedOutput: result.expectedOutput,
-            actualOutput: result.actualOutput,
-            error: result.error,
-            durationMs: result.durationMs
-          }))
+          create: submission.testResults.map(buildTestResultData)
         }
       }
     });
@@ -235,10 +286,10 @@ export class PrismaStore implements CodeLabStore {
           async (transaction) => {
             const current = await transaction.submission.findUnique({
               where: { id: input.submissionId },
-              include: { testResults: true }
+              include: submissionInclude
             });
             if (!current) {
-              throw new DomainError("Submissao nao encontrada.", 404);
+              throw new DomainError("Submissão não encontrada.", 404);
             }
             if (current.status !== PrismaSubmissionStatus.PENDING) {
               return mapSubmission(current);
@@ -255,7 +306,7 @@ export class PrismaStore implements CodeLabStore {
                 }
               })) > 0;
             const scoreAwarded =
-              input.status === "accepted"
+              input.status === "accepted" && !input.pointsForfeited
                 ? calculateScoreAward(input.challengePoints, alreadySolved)
                 : 0;
 
@@ -265,24 +316,15 @@ export class PrismaStore implements CodeLabStore {
                 status: toPrismaSubmissionStatus(input.status),
                 scoreAwarded,
                 evaluatedAt: input.evaluatedAt,
+                totalTests: input.totalTests,
+                passedTests: input.passedTests,
+                errorMessage: input.errorMessage,
+                compileWarnings: input.compileWarnings,
                 testResults: {
-                  create: input.testResults.map((result) => ({
-                    id: randomUUID(),
-                    testCaseId: result.testCaseId,
-                    executionStatus: toPrismaExecutionStatus(
-                      result.executionStatus
-                    ),
-                    isPublic: result.isPublic,
-                    passed: result.passed,
-                    input: result.input,
-                    expectedOutput: result.expectedOutput,
-                    actualOutput: result.actualOutput,
-                    error: result.error,
-                    durationMs: result.durationMs
-                  }))
+                  create: input.testResults.map(buildTestResultData)
                 }
               },
-              include: { testResults: true }
+              include: submissionInclude
             });
 
             if (scoreAwarded > 0) {
@@ -313,7 +355,7 @@ export class PrismaStore implements CodeLabStore {
       }
     }
 
-    throw new Error("Nao foi possivel concluir a submissao.");
+    throw new Error("Não foi possível concluir a submissão.");
   }
 
   async listSubmissions(
@@ -327,9 +369,7 @@ export class PrismaStore implements CodeLabStore {
         challengeId,
         status: status ? toPrismaSubmissionStatus(status) : undefined
       },
-      include: {
-        testResults: true
-      },
+      include: submissionInclude,
       orderBy: {
         submittedAt: "desc"
       }
@@ -362,7 +402,7 @@ export class PrismaStore implements CodeLabStore {
   async getUserProgress(userId: string): Promise<UserProgress> {
     const [challenges, solvedChallengeIds] = await Promise.all([
       this.prisma.challenge.findMany({
-        where: { isActive: true },
+        where: { isActive: true, isPublished: true },
         select: { id: true, difficulty: true }
       }),
       this.findSolvedChallengeIds(userId)
@@ -525,6 +565,118 @@ export class PrismaStore implements CodeLabStore {
     };
   }
 
+  async listTracks(): Promise<Track[]> {
+    const tracks = await this.prisma.track.findMany({
+      orderBy: { position: "asc" },
+      include: {
+        modules: {
+          orderBy: { position: "asc" },
+          include: { lessons: { orderBy: { position: "asc" } } }
+        }
+      }
+    });
+    return tracks.map((track) => ({
+      id: track.id,
+      slug: track.slug,
+      title: track.title,
+      description: track.description,
+      position: track.position,
+      modules: track.modules.map((module) => ({
+        id: module.id,
+        trackId: module.trackId,
+        slug: module.slug,
+        title: module.title,
+        objective: module.objective,
+        concept: module.concept,
+        estimatedMinutes: module.estimatedMinutes,
+        position: module.position,
+        prerequisiteIds: module.prerequisiteIds,
+        lessons: module.lessons.map((lesson) => ({
+          id: lesson.id,
+          moduleId: lesson.moduleId,
+          slug: lesson.slug,
+          title: lesson.title,
+          summary: lesson.summary,
+          content: lesson.content,
+          estimatedMinutes: lesson.estimatedMinutes,
+          position: lesson.position
+        }))
+      }))
+    }));
+  }
+
+  /** Sincroniza trilhas, módulos e lições com o catálogo (seed idempotente). */
+  async replaceTracks(tracks: Track[]): Promise<void> {
+    await this.prisma.$transaction(async (transaction) => {
+      for (const track of tracks) {
+        const trackData = { slug: track.slug, title: track.title, description: track.description, position: track.position };
+        await transaction.track.upsert({ where: { id: track.id }, create: { id: track.id, ...trackData }, update: trackData });
+        for (const module of track.modules) {
+          const moduleData = {
+            trackId: track.id,
+            slug: module.slug,
+            title: module.title,
+            objective: module.objective,
+            concept: module.concept,
+            estimatedMinutes: module.estimatedMinutes,
+            position: module.position,
+            prerequisiteIds: module.prerequisiteIds
+          };
+          await transaction.module.upsert({ where: { id: module.id }, create: { id: module.id, ...moduleData }, update: moduleData });
+          for (const lesson of module.lessons) {
+            const lessonData = {
+              moduleId: module.id,
+              slug: lesson.slug,
+              title: lesson.title,
+              summary: lesson.summary,
+              content: lesson.content,
+              estimatedMinutes: lesson.estimatedMinutes,
+              position: lesson.position
+            };
+            await transaction.lesson.upsert({ where: { id: lesson.id }, create: { id: lesson.id, ...lessonData }, update: lessonData });
+          }
+        }
+      }
+      const lessonIds = tracks.flatMap((track) => track.modules.flatMap((module) => module.lessons.map((lesson) => lesson.id)));
+      const moduleIds = tracks.flatMap((track) => track.modules.map((module) => module.id));
+      await transaction.lesson.deleteMany({ where: { id: { notIn: lessonIds } } });
+      await transaction.module.deleteMany({ where: { id: { notIn: moduleIds } } });
+      await transaction.track.deleteMany({ where: { id: { notIn: tracks.map((track) => track.id) } } });
+    }, { timeout: 60000 });
+  }
+
+  async listLessonCompletions(userId: string): Promise<string[]> {
+    const completions = await this.prisma.lessonCompletion.findMany({ where: { userId }, select: { lessonId: true } });
+    return completions.map((completion) => completion.lessonId);
+  }
+
+  async completeLesson(userId: string, lessonId: string): Promise<void> {
+    await this.prisma.lessonCompletion.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: { userId, lessonId },
+      update: {}
+    });
+  }
+
+  async getChallengeUnlock(userId: string, challengeId: string): Promise<ChallengeUnlock | undefined> {
+    const unlock = await this.prisma.challengeUnlock.findUnique({
+      where: { userId_challengeId: { userId, challengeId } }
+    });
+    return unlock
+      ? { userId, challengeId, hintsRevealed: unlock.hintsRevealed, solutionRevealed: unlock.solutionRevealed }
+      : undefined;
+  }
+
+  async saveChallengeUnlock(unlock: ChallengeUnlock): Promise<ChallengeUnlock> {
+    const data = { hintsRevealed: unlock.hintsRevealed, solutionRevealed: unlock.solutionRevealed };
+    await this.prisma.challengeUnlock.upsert({
+      where: { userId_challengeId: { userId: unlock.userId, challengeId: unlock.challengeId } },
+      create: { userId: unlock.userId, challengeId: unlock.challengeId, ...data },
+      update: data
+    });
+    return { ...unlock };
+  }
+
   async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
   }
@@ -549,6 +701,128 @@ export class PrismaStore implements CodeLabStore {
       where: { slug },
       include: challengeInclude
     });
+  }
+
+  // ---------- Conta ----------
+  async findUserCredentialsById(userId: string): Promise<UserCredentials | undefined> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    return user ? mapUserCredentials(user) : undefined;
+  }
+
+  async getAccountStatus(userId: string): Promise<AccountStatus | undefined> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true, createdAt: true } });
+    return user ?? undefined;
+  }
+
+  async updateUser(userId: string, input: UpdateUserInput): Promise<User> {
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
+          ...(input.emailVerifiedAt ? { emailVerifiedAt: input.emailVerifiedAt } : {})
+        }
+      });
+      return mapUser(user);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new DomainError("Usuário não encontrado.", 404);
+      }
+      throw error;
+    }
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    // As relações do usuário (submissões, comentários, avaliações, progresso,
+    // tokens e turmas) são apagadas em cascata pelo banco.
+    await this.prisma.user.deleteMany({ where: { id: userId } });
+  }
+
+  async saveAuthToken(token: AuthToken): Promise<void> {
+    await this.prisma.authToken.create({ data: { ...token, kind: toPrismaAuthTokenKind(token.kind) } });
+  }
+
+  async findAuthToken(kind: AuthTokenKind, tokenHash: string): Promise<AuthToken | undefined> {
+    const token = await this.prisma.authToken.findUnique({ where: { tokenHash } });
+    if (!token || token.kind !== toPrismaAuthTokenKind(kind)) return undefined;
+    return { ...token, kind };
+  }
+
+  async markAuthTokenUsed(tokenId: string, usedAt: Date): Promise<void> {
+    await this.prisma.authToken.updateMany({ where: { id: tokenId }, data: { usedAt } });
+  }
+
+  async invalidateAuthTokens(userId: string, kind: AuthTokenKind, usedAt: Date): Promise<void> {
+    await this.prisma.authToken.updateMany({ where: { userId, kind: toPrismaAuthTokenKind(kind), usedAt: null }, data: { usedAt } });
+  }
+
+  async listCommentsByUser(userId: string): Promise<Comment[]> {
+    const comments = await this.prisma.comment.findMany({
+      where: { userId },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" }
+    });
+    return comments.map(mapComment);
+  }
+
+  async listRatingsByUser(userId: string): Promise<Rating[]> {
+    const ratings = await this.prisma.rating.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+    return ratings.map(mapRating);
+  }
+
+  // ---------- Turmas ----------
+  async createClass(classGroup: ClassGroup): Promise<ClassGroup> {
+    try {
+      return await this.prisma.classGroup.create({ data: classGroup });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new DomainError("Já existe uma turma com este código.", 409);
+      }
+      throw error;
+    }
+  }
+
+  async listClasses(ownerId?: string): Promise<ClassGroup[]> {
+    return this.prisma.classGroup.findMany({ where: ownerId ? { ownerId } : {}, orderBy: { createdAt: "desc" } });
+  }
+
+  async findClassById(classId: string): Promise<ClassGroup | undefined> {
+    return (await this.prisma.classGroup.findUnique({ where: { id: classId } })) ?? undefined;
+  }
+
+  async findClassByCode(code: string): Promise<ClassGroup | undefined> {
+    return (await this.prisma.classGroup.findUnique({ where: { code } })) ?? undefined;
+  }
+
+  async deleteClass(classId: string): Promise<void> {
+    await this.prisma.classGroup.deleteMany({ where: { id: classId } });
+  }
+
+  async addClassMember(member: ClassMember): Promise<void> {
+    await this.prisma.classMember.upsert({
+      where: { classId_userId: { classId: member.classId, userId: member.userId } },
+      create: member,
+      update: {}
+    });
+  }
+
+  async removeClassMember(classId: string, userId: string): Promise<void> {
+    await this.prisma.classMember.deleteMany({ where: { classId, userId } });
+  }
+
+  async listClassMembers(classId: string): Promise<Array<ClassMember & { user: User }>> {
+    const members = await this.prisma.classMember.findMany({
+      where: { classId },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } }
+    });
+    return members.map((member) => ({ classId: member.classId, userId: member.userId, joinedAt: member.joinedAt, user: mapUser(member.user) }));
+  }
+
+  async listUserClasses(userId: string): Promise<ClassGroup[]> {
+    const memberships = await this.prisma.classMember.findMany({ where: { userId }, include: { classGroup: true }, orderBy: { joinedAt: "desc" } });
+    return memberships.map((membership) => membership.classGroup);
   }
 }
 
@@ -592,6 +866,21 @@ function mapChallenge(
     constraints: challenge.constraints,
     tags: challenge.tags.map((challengeTag) => challengeTag.tag.name),
     examples: mapExamples(challenge.examples),
+    languages: mapLanguages(challenge.languages),
+    mode: challenge.mode === "function" ? "function" : "stdio",
+    functionSpec: (challenge.functionSpec as unknown as FunctionSpec | null) ?? null,
+    checker: mapChecker(challenge.checker),
+    timeLimitMs: challenge.timeLimitMs,
+    memoryLimitMb: challenge.memoryLimitMb,
+    topic: challenge.topic,
+    subtopic: challenge.subtopic,
+    moduleId: challenge.moduleId,
+    position: challenge.position,
+    isBoss: challenge.isBoss,
+    hints: Array.isArray(challenge.hints) ? challenge.hints.filter((hint): hint is string => typeof hint === "string") : [],
+    editorial: challenge.editorial,
+    complexity: (challenge.complexity as unknown as Complexity | null) ?? null,
+    followUps: challenge.followUps,
     testCases: challenge.testCases.map((testCase) => ({
       id: testCase.id,
       challengeId: testCase.challengeId,
@@ -601,9 +890,14 @@ function mapChallenge(
       weight: testCase.weight
     })),
     isActive: challenge.isActive,
+    isPublished: challenge.isPublished,
     createdBy: challenge.createdBy
   };
 }
+
+const submissionInclude = {
+  testResults: { orderBy: { position: "asc" } }
+} satisfies Prisma.SubmissionInclude;
 
 function mapSubmission(submission: {
   id: string;
@@ -615,17 +909,11 @@ function mapSubmission(submission: {
   scoreAwarded: number;
   submittedAt: Date;
   evaluatedAt: Date | null;
-  testResults: Array<{
-    testCaseId: string;
-    executionStatus: PrismaExecutionStatus;
-    isPublic: boolean;
-    passed: boolean;
-    input: string;
-    expectedOutput: string;
-    actualOutput: string;
-    error: string | null;
-    durationMs: number;
-  }>;
+  totalTests: number;
+  passedTests: number;
+  errorMessage: string | null;
+  compileWarnings: string | null;
+  testResults: Array<Parameters<typeof mapSubmissionTestResult>[0]>;
 }): Submission {
   return {
     id: submission.id,
@@ -637,30 +925,55 @@ function mapSubmission(submission: {
     scoreAwarded: submission.scoreAwarded,
     submittedAt: submission.submittedAt,
     evaluatedAt: submission.evaluatedAt,
+    totalTests: submission.totalTests,
+    passedTests: submission.passedTests,
+    errorMessage: submission.errorMessage,
+    compileWarnings: submission.compileWarnings,
     testResults: submission.testResults.map(mapSubmissionTestResult)
   };
 }
 
 function mapSubmissionTestResult(result: {
   testCaseId: string;
+  position: number;
   executionStatus: PrismaExecutionStatus;
   isPublic: boolean;
   passed: boolean;
   input: string;
   expectedOutput: string;
   actualOutput: string;
+  stderr: string | null;
   error: string | null;
   durationMs: number;
 }): SubmissionTestResult {
   return {
     testCaseId: result.testCaseId,
+    position: result.position,
     executionStatus: fromPrismaExecutionStatus(result.executionStatus),
     isPublic: result.isPublic,
     passed: result.passed,
     input: result.input,
     expectedOutput: result.expectedOutput,
     actualOutput: result.actualOutput,
+    stderr: result.stderr ?? undefined,
     error: result.error ?? undefined,
+    durationMs: result.durationMs
+  };
+}
+
+function buildTestResultData(result: SubmissionTestResult) {
+  return {
+    id: randomUUID(),
+    testCaseId: result.testCaseId,
+    position: result.position,
+    executionStatus: toPrismaExecutionStatus(result.executionStatus),
+    isPublic: result.isPublic,
+    passed: result.passed,
+    input: result.input,
+    expectedOutput: result.expectedOutput,
+    actualOutput: result.actualOutput,
+    stderr: result.stderr,
+    error: result.error,
     durationMs: result.durationMs
   };
 }
@@ -696,6 +1009,27 @@ function mapRating(rating: {
   return rating;
 }
 
+/** Campos de conteúdo e de avaliação comuns à criação e à edição. */
+function challengeContentData(challenge: Challenge) {
+  const json = (value: unknown) => value as Prisma.InputJsonValue;
+  return {
+    languages: json(challenge.languages),
+    mode: challenge.mode,
+    functionSpec: challenge.functionSpec ? json(challenge.functionSpec) : Prisma.JsonNull,
+    checker: json(challenge.checker),
+    timeLimitMs: challenge.timeLimitMs,
+    memoryLimitMb: challenge.memoryLimitMb,
+    topic: challenge.topic,
+    subtopic: challenge.subtopic,
+    position: challenge.position,
+    isBoss: challenge.isBoss,
+    hints: json(challenge.hints),
+    editorial: challenge.editorial,
+    complexity: challenge.complexity ? json(challenge.complexity) : Prisma.JsonNull,
+    followUps: challenge.followUps
+  };
+}
+
 function buildChallengeCreateData(
   challenge: Challenge
 ): Prisma.ChallengeCreateInput {
@@ -708,7 +1042,10 @@ function buildChallengeCreateData(
     points: challenge.points,
     constraints: challenge.constraints,
     examples: challenge.examples as unknown as Prisma.InputJsonValue,
+    ...challengeContentData(challenge),
+    ...(challenge.moduleId ? { module: { connect: { id: challenge.moduleId } } } : {}),
     isActive: challenge.isActive,
+    isPublished: challenge.isPublished !== false,
     creator: { connect: { id: challenge.createdBy } },
     tags: { create: buildChallengeTags(challenge.tags) },
     testCases: { create: buildTestCases(challenge) }
@@ -751,10 +1088,10 @@ function toTagSlug(name: string): string {
 function mapChallengeWriteError(error: unknown): unknown {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      return new DomainError("Slug de desafio ja utilizado.", 409);
+      return new DomainError("Slug de desafio já utilizado.", 409);
     }
     if (error.code === "P2025") {
-      return new DomainError("Desafio nao encontrado.", 404);
+      return new DomainError("Desafio não encontrado.", 404);
     }
   }
   return error;
@@ -779,6 +1116,51 @@ function mapExamples(value: unknown): ChallengeExample[] {
       input: item.input,
       output: item.output
     }));
+}
+
+const LANGUAGE_VALUES = new Set<string>(["javascript", "c", "python"]);
+
+function mapLanguages(value: unknown): ChallengeLanguage[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => entry && typeof entry === "object" && LANGUAGE_VALUES.has((entry as { language?: string }).language ?? ""))
+    .map((entry) => {
+      const item = entry as { language: SubmissionLanguage; sourceRules?: unknown; starterCode?: unknown };
+      return {
+        language: item.language,
+        sourceRules: mapSourceRules(item.sourceRules),
+        ...(typeof item.starterCode === "string" ? { starterCode: item.starterCode } : {})
+      };
+    });
+}
+
+function mapChecker(value: unknown): OutputChecker {
+  const checker = value as OutputChecker | null;
+  switch (checker?.kind) {
+    case "tolerance":
+      return { kind: "tolerance", epsilon: Number(checker.epsilon) || 1e-6 };
+    case "unordered-lines":
+    case "unordered-tokens":
+      return { kind: checker.kind };
+    case "custom":
+      return typeof checker.code === "string" ? { kind: "custom", code: checker.code } : { kind: "exact" };
+    default:
+      return { kind: "exact" };
+  }
+}
+
+function mapSourceRules(value: unknown): SourceRule[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (rule): rule is SourceRule =>
+      typeof rule === "object" &&
+      rule !== null &&
+      typeof rule.message === "string" &&
+      (rule.kind === "recursion" && (rule.minDepth === undefined || typeof rule.minDepth === "number") ||
+        ((rule.kind === "forbid" || rule.kind === "require") && typeof rule.pattern === "string"))
+  );
 }
 
 function toPrismaDifficulty(difficulty: Difficulty): PrismaDifficulty {
@@ -819,7 +1201,9 @@ function toPrismaSubmissionLanguage(
   language: SubmissionLanguage
 ): PrismaSubmissionLanguage {
   const map = {
-    javascript: PrismaSubmissionLanguage.JAVASCRIPT
+    javascript: PrismaSubmissionLanguage.JAVASCRIPT,
+    c: PrismaSubmissionLanguage.C,
+    python: PrismaSubmissionLanguage.PYTHON
   } satisfies Record<SubmissionLanguage, PrismaSubmissionLanguage>;
   return map[language];
 }
@@ -828,7 +1212,9 @@ function fromPrismaSubmissionLanguage(
   language: PrismaSubmissionLanguage
 ): SubmissionLanguage {
   const map = {
-    [PrismaSubmissionLanguage.JAVASCRIPT]: "javascript"
+    [PrismaSubmissionLanguage.JAVASCRIPT]: "javascript",
+    [PrismaSubmissionLanguage.C]: "c",
+    [PrismaSubmissionLanguage.PYTHON]: "python"
   } satisfies Record<PrismaSubmissionLanguage, SubmissionLanguage>;
   return map[language];
 }
@@ -841,7 +1227,10 @@ function toPrismaSubmissionStatus(
     accepted: PrismaSubmissionStatus.ACCEPTED,
     wrong_answer: PrismaSubmissionStatus.WRONG_ANSWER,
     runtime_error: PrismaSubmissionStatus.RUNTIME_ERROR,
-    timeout: PrismaSubmissionStatus.TIMEOUT
+    timeout: PrismaSubmissionStatus.TIMEOUT,
+    compile_error: PrismaSubmissionStatus.COMPILE_ERROR,
+    internal_error: PrismaSubmissionStatus.INTERNAL_ERROR,
+    rule_violation: PrismaSubmissionStatus.RULE_VIOLATION
   } satisfies Record<SubmissionStatus, PrismaSubmissionStatus>;
   return map[status];
 }
@@ -854,7 +1243,10 @@ function fromPrismaSubmissionStatus(
     [PrismaSubmissionStatus.ACCEPTED]: "accepted",
     [PrismaSubmissionStatus.WRONG_ANSWER]: "wrong_answer",
     [PrismaSubmissionStatus.RUNTIME_ERROR]: "runtime_error",
-    [PrismaSubmissionStatus.TIMEOUT]: "timeout"
+    [PrismaSubmissionStatus.TIMEOUT]: "timeout",
+    [PrismaSubmissionStatus.COMPILE_ERROR]: "compile_error",
+    [PrismaSubmissionStatus.INTERNAL_ERROR]: "internal_error",
+    [PrismaSubmissionStatus.RULE_VIOLATION]: "rule_violation"
   } satisfies Record<PrismaSubmissionStatus, SubmissionStatus>;
   return map[status];
 }
@@ -886,4 +1278,8 @@ function fromPrismaExecutionStatus(
     [PrismaExecutionStatus.TIMEOUT]: "timeout"
   } satisfies Record<PrismaExecutionStatus, SubmissionTestResult["executionStatus"]>;
   return map[status];
+}
+
+function toPrismaAuthTokenKind(kind: AuthTokenKind): PrismaAuthTokenKind {
+  return kind === "password_reset" ? PrismaAuthTokenKind.PASSWORD_RESET : PrismaAuthTokenKind.EMAIL_VERIFICATION;
 }

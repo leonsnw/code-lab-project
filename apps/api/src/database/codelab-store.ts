@@ -1,5 +1,13 @@
 import type {
+  AccountStatus,
+  AuthToken,
+  AuthTokenKind,
+  ClassGroup,
+  ClassMember,
+  UpdateUserInput,
   Challenge,
+  ChallengeUnlock,
+  Track,
   Comment,
   CreateUserInput,
   Difficulty,
@@ -21,7 +29,13 @@ export interface CompleteSubmissionInput {
   status: Exclude<SubmissionStatus, "pending">;
   evaluatedAt: Date;
   testResults: SubmissionTestResult[];
+  totalTests: number;
+  passedTests: number;
+  errorMessage: string | null;
+  compileWarnings: string | null;
   challengePoints: number;
+  /** Solução comentada revelada: o desafio conta como resolvido, sem pontos. */
+  pointsForfeited: boolean;
 }
 
 export interface AddCommentInput {
@@ -71,4 +85,35 @@ export interface CodeLabStore {
   ): Promise<RatingSummary>;
   upsertRating(input: UpsertRatingInput): Promise<Rating>;
   getAdminStatisticsData(): Promise<AdminStatisticsData>;
+  listTracks(): Promise<Track[]>;
+  replaceTracks(tracks: Track[]): Promise<void>;
+  listLessonCompletions(userId: string): Promise<string[]>;
+  completeLesson(userId: string, lessonId: string): Promise<void>;
+  getChallengeUnlock(userId: string, challengeId: string): Promise<ChallengeUnlock | undefined>;
+  saveChallengeUnlock(unlock: ChallengeUnlock): Promise<ChallengeUnlock>;
+
+  // ---------- Conta (LGPD, recuperação de senha, verificação de e-mail) ----------
+  findUserCredentialsById(userId: string): Promise<UserCredentials | undefined>;
+  getAccountStatus(userId: string): Promise<AccountStatus | undefined>;
+  updateUser(userId: string, input: UpdateUserInput): Promise<User>;
+  /** Apaga a conta e, em cascata, submissões, comentários, avaliações e progresso. */
+  deleteUser(userId: string): Promise<void>;
+  saveAuthToken(token: AuthToken): Promise<void>;
+  findAuthToken(kind: AuthTokenKind, tokenHash: string): Promise<AuthToken | undefined>;
+  markAuthTokenUsed(tokenId: string, usedAt: Date): Promise<void>;
+  /** Invalida os tokens ainda não usados de um tipo (novo pedido anula os anteriores). */
+  invalidateAuthTokens(userId: string, kind: AuthTokenKind, usedAt: Date): Promise<void>;
+  listCommentsByUser(userId: string): Promise<Comment[]>;
+  listRatingsByUser(userId: string): Promise<Rating[]>;
+
+  // ---------- Turmas ----------
+  createClass(classGroup: ClassGroup): Promise<ClassGroup>;
+  listClasses(ownerId?: string): Promise<ClassGroup[]>;
+  findClassById(classId: string): Promise<ClassGroup | undefined>;
+  findClassByCode(code: string): Promise<ClassGroup | undefined>;
+  deleteClass(classId: string): Promise<void>;
+  addClassMember(member: ClassMember): Promise<void>;
+  removeClassMember(classId: string, userId: string): Promise<void>;
+  listClassMembers(classId: string): Promise<Array<ClassMember & { user: User }>>;
+  listUserClasses(userId: string): Promise<ClassGroup[]>;
 }

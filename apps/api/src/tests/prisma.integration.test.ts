@@ -14,16 +14,17 @@ import { RatingService } from "../modules/ratings/rating.service.js";
 import { ScoreService } from "../modules/scoring/score.service.js";
 import { SubmissionEvaluationService } from "../modules/submissions/submission-evaluation.service.js";
 import { SubmissionService } from "../modules/submissions/submission.service.js";
+import { buildSeedData } from "../database/seed.js";
+
+const CATALOG_SIZE = buildSeedData().challenges.length;
+const EASY_COUNT = buildSeedData().challenges.filter((challenge) => challenge.difficulty === "easy").length;
 
 const runDatabaseTests = process.env.RUN_DATABASE_TESTS === "1";
 const prisma = new PrismaClient();
 const store = new PrismaStore(prisma);
 
-const validSolution = `
-const fs = require("fs");
-const [a, b] = fs.readFileSync(0, "utf8").trim().split(/\\s+/).map(Number);
-console.log(a + b);
-`;
+// "Soma de dois números" está no modo função: o aluno implementa somar(a, b).
+const validSolution = "function somar(a, b) { return a + b; }";
 
 describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
   beforeAll(async () => {
@@ -80,7 +81,7 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
       expect(fulfilled).toHaveLength(1);
       expect(rejected).toHaveLength(1);
       expect(rejected[0]).toMatchObject({
-        reason: { statusCode: 409, message: "E-mail ja cadastrado." }
+        reason: { statusCode: 409, message: "E-mail já cadastrado." }
       });
     } finally {
       await prisma.user.deleteMany({ where: { email } });
@@ -125,15 +126,15 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
       ).toEqual([0, 100]);
       expect(score.totalPoints).toBe(100);
       expect(progress).toMatchObject({
-        totalChallenges: 3,
+        totalChallenges: CATALOG_SIZE,
         solvedChallenges: 1,
-        pendingChallenges: 2
+        pendingChallenges: CATALOG_SIZE - 1
       });
       expect(progress.byDifficulty[0]).toEqual({
         difficulty: "easy",
-        total: 2,
+        total: EASY_COUNT,
         solved: 1,
-        percentage: 50
+        percentage: Math.round(100 / EASY_COUNT)
       });
       expect(submissions.every((submission) => submission.evaluatedAt)).toBe(
         true
@@ -387,6 +388,10 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
           scoreAwarded: 0,
           submittedAt: timestamp,
           evaluatedAt: timestamp,
+          totalTests: 2,
+          passedTests: 0,
+          errorMessage: null,
+          compileWarnings: null,
           testResults: []
         }),
         store.addSubmission({
@@ -399,6 +404,10 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
           scoreAwarded: 100,
           submittedAt: timestamp,
           evaluatedAt: timestamp,
+          totalTests: 2,
+          passedTests: 0,
+          errorMessage: null,
+          compileWarnings: null,
           testResults: []
         }),
         store.addSubmission({
@@ -411,6 +420,10 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
           scoreAwarded: 100,
           submittedAt: timestamp,
           evaluatedAt: timestamp,
+          totalTests: 2,
+          passedTests: 0,
+          errorMessage: null,
+          compileWarnings: null,
           testResults: []
         })
       ]);
@@ -488,13 +501,58 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
     ]);
     const durationMs = performance.now() - startedAt;
 
-    expect(challenges).toHaveLength(3);
+    expect(challenges).toHaveLength(CATALOG_SIZE);
     expect(ranking.length).toBeGreaterThan(0);
-    expect(progress.totalChallenges).toBe(3);
+    expect(progress.totalChallenges).toBe(CATALOG_SIZE);
     expect(Array.isArray(comments)).toBe(true);
     expect(rating.total).toBeGreaterThanOrEqual(0);
     expect(adminChallenges.length).toBeGreaterThanOrEqual(challenges.length);
     expect(statistics.overview.totalChallenges).toBeGreaterThanOrEqual(3);
     expect(durationMs).toBeLessThan(2000);
+  });
+
+  it("guarda tokens de conta, turmas, rascunhos e apaga a conta em cascata", async () => {
+    const userId = randomUUID();
+    const ownerId = "user-admin";
+    const classId = randomUUID();
+    const now = new Date();
+    await store.createUser({ id: userId, name: "Conta LGPD", email: `${userId}@codelab.local`, passwordHash: await bcrypt.hash("123456", 10), role: "student" });
+
+    // Conta nova nasce sem e-mail verificado; a verificação grava a data.
+    expect((await store.getAccountStatus(userId))?.emailVerifiedAt).toBeNull();
+    await store.updateUser(userId, { name: "Conta Renomeada", emailVerifiedAt: now });
+    expect(await store.findUserById(userId)).toMatchObject({ name: "Conta Renomeada" });
+    expect((await store.getAccountStatus(userId))?.emailVerifiedAt).toEqual(now);
+
+    const tokenHash = randomUUID().replace(/-/g, "");
+    await store.saveAuthToken({ id: randomUUID(), userId, kind: "password_reset", tokenHash, expiresAt: new Date(now.getTime() + 3600000), usedAt: null, createdAt: now });
+    expect(await store.findAuthToken("email_verification", tokenHash)).toBeUndefined();
+    const token = await store.findAuthToken("password_reset", tokenHash);
+    expect(token).toMatchObject({ userId, kind: "password_reset", usedAt: null });
+    await store.invalidateAuthTokens(userId, "password_reset", now);
+    expect((await store.findAuthToken("password_reset", tokenHash))?.usedAt).toEqual(now);
+
+    await store.createClass({ id: classId, name: "Turma Integração", code: `T${Date.now().toString(36).slice(-5).toUpperCase()}`, ownerId, createdAt: now });
+    await store.addClassMember({ classId, userId, joinedAt: now });
+    await store.addClassMember({ classId, userId, joinedAt: now });
+    expect((await store.listClassMembers(classId)).map((member) => member.user.id)).toEqual([userId]);
+    expect((await store.listUserClasses(userId)).map((item) => item.id)).toEqual([classId]);
+
+    // Rascunho não aparece no catálogo público, mas continua no administrativo.
+    const soma = (await store.findChallengeBySlug("soma-de-dois-numeros"))!;
+    try {
+      await store.updateChallenge({ ...soma, isPublished: false });
+      expect((await store.listChallenges()).some((challenge) => challenge.id === soma.id)).toBe(false);
+      expect((await store.listAllChallenges()).find((challenge) => challenge.id === soma.id)?.isPublished).toBe(false);
+    } finally {
+      await store.updateChallenge({ ...soma, isPublished: true });
+    }
+
+    await store.deleteUser(userId);
+    expect(await store.findUserById(userId)).toBeUndefined();
+    expect(await store.findAuthToken("password_reset", tokenHash)).toBeUndefined();
+    expect(await store.listClassMembers(classId)).toEqual([]);
+    await store.deleteClass(classId);
+    expect(await store.findClassById(classId)).toBeUndefined();
   });
 });

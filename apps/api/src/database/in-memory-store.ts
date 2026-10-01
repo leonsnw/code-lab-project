@@ -1,5 +1,12 @@
 import type {
+  AccountStatus,
+  AuthToken,
+  AuthTokenKind,
+  ClassGroup,
+  ClassMember,
+  UpdateUserInput,
   Challenge,
+  ChallengeUnlock,
   Comment,
   CreateUserInput,
   Difficulty,
@@ -11,6 +18,7 @@ import type {
   SubmissionStatus,
   User,
   UserCredentials,
+  Track,
   UserProgress
 } from "../domain/types.js";
 import type {
@@ -33,9 +41,28 @@ export class InMemoryStore implements CodeLabStore {
   private readonly scores = new Map<string, ScoreSummary>();
   private readonly comments: Comment[] = [];
   private readonly ratings = new Map<string, Rating>();
+  private tracks: Track[] = [];
+  private readonly lessonCompletions = new Map<string, Set<string>>();
+  private readonly unlocks = new Map<string, ChallengeUnlock>();
+  private readonly accounts = new Map<string, AccountStatus>();
+  private readonly authTokens = new Map<string, AuthToken>();
+  private readonly classes = new Map<string, ClassGroup>();
+  private readonly classMembers: ClassMember[] = [];
 
-  constructor(seed = buildSeedData()) {
-    seed.users.forEach((user) => this.users.set(user.id, user));
+  constructor(
+    seed: {
+      users: UserCredentials[];
+      challenges: Challenge[];
+      scores: ScoreSummary[];
+      tracks?: Track[];
+    } = buildSeedData()
+  ) {
+    this.tracks = seed.tracks ?? [];
+    seed.users.forEach((user) => {
+      this.users.set(user.id, user);
+      // Usuários do seed já nascem com o e-mail verificado.
+      this.accounts.set(user.id, { emailVerifiedAt: new Date(0), createdAt: new Date(0) });
+    });
     seed.challenges.forEach((challenge) => {
       this.challenges.set(challenge.id, challenge);
       this.challengeSlugIndex.set(challenge.slug, challenge.id);
@@ -57,6 +84,7 @@ export class InMemoryStore implements CodeLabStore {
   async createUser(input: CreateUserInput): Promise<User> {
     const user: UserCredentials = { ...input };
     this.users.set(user.id, user);
+    this.accounts.set(user.id, { emailVerifiedAt: null, createdAt: new Date() });
     this.scores.set(user.id, {
       userId: user.id,
       totalPoints: 0,
@@ -67,9 +95,7 @@ export class InMemoryStore implements CodeLabStore {
   }
 
   async listChallenges(difficulty?: Difficulty): Promise<Challenge[]> {
-    const challenges = [...this.challenges.values()].filter(
-      (challenge) => challenge.isActive
-    );
+    const challenges = [...this.challenges.values()].filter(isVisible);
 
     if (!difficulty) {
       return challenges;
@@ -100,7 +126,7 @@ export class InMemoryStore implements CodeLabStore {
   async updateChallenge(challenge: Challenge): Promise<Challenge> {
     const current = this.challenges.get(challenge.id);
     if (!current) {
-      throw new DomainError("Desafio nao encontrado.", 404);
+      throw new DomainError("Desafio não encontrado.", 404);
     }
     if (current.slug !== challenge.slug) {
       this.challengeSlugIndex.delete(current.slug);
@@ -113,7 +139,7 @@ export class InMemoryStore implements CodeLabStore {
   async deactivateChallenge(challengeId: string): Promise<Challenge> {
     const current = this.challenges.get(challengeId);
     if (!current) {
-      throw new DomainError("Desafio nao encontrado.", 404);
+      throw new DomainError("Desafio não encontrado.", 404);
     }
     const deactivated = { ...current, isActive: false };
     this.challenges.set(challengeId, deactivated);
@@ -132,7 +158,7 @@ export class InMemoryStore implements CodeLabStore {
     );
     const current = this.submissions[index];
     if (!current) {
-      throw new DomainError("Submissao nao encontrada.", 404);
+      throw new DomainError("Submissão não encontrada.", 404);
     }
     if (current.status !== "pending") {
       return current;
@@ -146,7 +172,7 @@ export class InMemoryStore implements CodeLabStore {
         submission.status === "accepted"
     );
     const scoreAwarded =
-      input.status === "accepted"
+      input.status === "accepted" && !input.pointsForfeited
         ? calculateScoreAward(input.challengePoints, alreadySolved)
         : 0;
     const completed: Submission = {
@@ -154,11 +180,15 @@ export class InMemoryStore implements CodeLabStore {
       status: input.status,
       scoreAwarded,
       evaluatedAt: input.evaluatedAt,
+      totalTests: input.totalTests,
+      passedTests: input.passedTests,
+      errorMessage: input.errorMessage,
+      compileWarnings: input.compileWarnings,
       testResults: input.testResults
     };
     this.submissions[index] = completed;
 
-    if (scoreAwarded > 0) {
+    if (input.status === "accepted") {
       const score = this.scores.get(current.userId) ?? {
         userId: current.userId,
         totalPoints: 0,
@@ -211,9 +241,7 @@ export class InMemoryStore implements CodeLabStore {
   }
 
   async getUserProgress(userId: string): Promise<UserProgress> {
-    const challenges = [...this.challenges.values()].filter(
-      (challenge) => challenge.isActive
-    );
+    const challenges = [...this.challenges.values()].filter(isVisible);
     const solvedChallengeIds = [
       ...new Set(
         this.submissions
@@ -235,7 +263,7 @@ export class InMemoryStore implements CodeLabStore {
         const user = this.users.get(score.userId);
         return {
           userId: score.userId,
-          name: user?.name ?? "Usuario desconhecido",
+          name: user?.name ?? "Usuário desconhecido",
           totalPoints: score.totalPoints,
           solvedChallenges: score.solvedChallengeIds.length
         };
@@ -252,7 +280,7 @@ export class InMemoryStore implements CodeLabStore {
   async addComment(input: AddCommentInput): Promise<Comment> {
     const user = this.users.get(input.userId);
     if (!user) {
-      throw new DomainError("Usuario nao encontrado.", 404);
+      throw new DomainError("Usuário não encontrado.", 404);
     }
 
     const comment: Comment = {
@@ -324,6 +352,160 @@ export class InMemoryStore implements CodeLabStore {
       }))
     };
   }
+  async listTracks(): Promise<Track[]> {
+    return structuredClone(this.tracks);
+  }
+
+  async replaceTracks(tracks: Track[]): Promise<void> {
+    this.tracks = structuredClone(tracks);
+  }
+
+  async listLessonCompletions(userId: string): Promise<string[]> {
+    return [...(this.lessonCompletions.get(userId) ?? [])];
+  }
+
+  async completeLesson(userId: string, lessonId: string): Promise<void> {
+    const completed = this.lessonCompletions.get(userId) ?? new Set<string>();
+    completed.add(lessonId);
+    this.lessonCompletions.set(userId, completed);
+  }
+
+  async getChallengeUnlock(userId: string, challengeId: string): Promise<ChallengeUnlock | undefined> {
+    const unlock = this.unlocks.get(`${userId}:${challengeId}`);
+    return unlock ? { ...unlock } : undefined;
+  }
+
+  async saveChallengeUnlock(unlock: ChallengeUnlock): Promise<ChallengeUnlock> {
+    this.unlocks.set(`${unlock.userId}:${unlock.challengeId}`, { ...unlock });
+    return { ...unlock };
+  }
+
+  // ---------- Conta ----------
+  async findUserCredentialsById(userId: string): Promise<UserCredentials | undefined> {
+    return this.users.get(userId);
+  }
+
+  async getAccountStatus(userId: string): Promise<AccountStatus | undefined> {
+    return this.users.has(userId) ? this.accounts.get(userId) ?? { emailVerifiedAt: null, createdAt: new Date(0) } : undefined;
+  }
+
+  async updateUser(userId: string, input: UpdateUserInput): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new DomainError("Usuário não encontrado.", 404);
+    const updated = { ...user, ...(input.name !== undefined ? { name: input.name } : {}), ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}) };
+    this.users.set(userId, updated);
+    if (input.emailVerifiedAt) {
+      const account = this.accounts.get(userId) ?? { emailVerifiedAt: null, createdAt: new Date() };
+      this.accounts.set(userId, { ...account, emailVerifiedAt: input.emailVerifiedAt });
+    }
+    return sanitizeUser(updated);
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    this.users.delete(userId);
+    this.accounts.delete(userId);
+    this.scores.delete(userId);
+    this.lessonCompletions.delete(userId);
+    const keep = <T>(list: T[], predicate: (item: T) => boolean) => {
+      const kept = list.filter(predicate);
+      list.splice(0, list.length, ...kept);
+    };
+    keep(this.submissions, (submission) => submission.userId !== userId);
+    keep(this.comments, (comment) => comment.userId !== userId);
+    keep(this.classMembers, (member) => member.userId !== userId);
+    for (const [key, rating] of this.ratings) if (rating.userId === userId) this.ratings.delete(key);
+    for (const [key, unlock] of this.unlocks) if (unlock.userId === userId) this.unlocks.delete(key);
+    for (const [key, token] of this.authTokens) if (token.userId === userId) this.authTokens.delete(key);
+    for (const classGroup of [...this.classes.values()]) if (classGroup.ownerId === userId) await this.deleteClass(classGroup.id);
+  }
+
+  async saveAuthToken(token: AuthToken): Promise<void> {
+    this.authTokens.set(token.id, { ...token });
+  }
+
+  async findAuthToken(kind: AuthTokenKind, tokenHash: string): Promise<AuthToken | undefined> {
+    const token = [...this.authTokens.values()].find((item) => item.kind === kind && item.tokenHash === tokenHash);
+    return token ? { ...token } : undefined;
+  }
+
+  async markAuthTokenUsed(tokenId: string, usedAt: Date): Promise<void> {
+    const token = this.authTokens.get(tokenId);
+    if (token) this.authTokens.set(tokenId, { ...token, usedAt });
+  }
+
+  async invalidateAuthTokens(userId: string, kind: AuthTokenKind, usedAt: Date): Promise<void> {
+    for (const token of this.authTokens.values()) {
+      if (token.userId === userId && token.kind === kind && !token.usedAt) token.usedAt = usedAt;
+    }
+  }
+
+  async listCommentsByUser(userId: string): Promise<Comment[]> {
+    return this.comments.filter((comment) => comment.userId === userId);
+  }
+
+  async listRatingsByUser(userId: string): Promise<Rating[]> {
+    return [...this.ratings.values()].filter((rating) => rating.userId === userId);
+  }
+
+  // ---------- Turmas ----------
+  async createClass(classGroup: ClassGroup): Promise<ClassGroup> {
+    if ([...this.classes.values()].some((item) => item.code === classGroup.code)) {
+      throw new DomainError("Já existe uma turma com este código.", 409);
+    }
+    this.classes.set(classGroup.id, { ...classGroup });
+    return { ...classGroup };
+  }
+
+  async listClasses(ownerId?: string): Promise<ClassGroup[]> {
+    return [...this.classes.values()]
+      .filter((item) => !ownerId || item.ownerId === ownerId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async findClassById(classId: string): Promise<ClassGroup | undefined> {
+    return this.classes.get(classId);
+  }
+
+  async findClassByCode(code: string): Promise<ClassGroup | undefined> {
+    return [...this.classes.values()].find((item) => item.code === code);
+  }
+
+  async deleteClass(classId: string): Promise<void> {
+    this.classes.delete(classId);
+    const kept = this.classMembers.filter((member) => member.classId !== classId);
+    this.classMembers.splice(0, this.classMembers.length, ...kept);
+  }
+
+  async addClassMember(member: ClassMember): Promise<void> {
+    if (this.classMembers.some((item) => item.classId === member.classId && item.userId === member.userId)) return;
+    this.classMembers.push({ ...member });
+  }
+
+  async removeClassMember(classId: string, userId: string): Promise<void> {
+    const kept = this.classMembers.filter((member) => !(member.classId === classId && member.userId === userId));
+    this.classMembers.splice(0, this.classMembers.length, ...kept);
+  }
+
+  async listClassMembers(classId: string): Promise<Array<ClassMember & { user: User }>> {
+    return this.classMembers
+      .filter((member) => member.classId === classId && this.users.has(member.userId))
+      .map((member) => ({ ...member, user: sanitizeUser(this.users.get(member.userId)!) }))
+      .sort((a, b) => a.user.name.localeCompare(b.user.name));
+  }
+
+  async listUserClasses(userId: string): Promise<ClassGroup[]> {
+    return this.classMembers
+      .filter((member) => member.userId === userId)
+      .map((member) => this.classes.get(member.classId))
+      .filter((item): item is ClassGroup => Boolean(item));
+  }
+}
+
+
+
+/** Visível para estudantes: ativo e publicado (rascunhos ficam só com o admin). */
+function isVisible(challenge: Challenge): boolean {
+  return challenge.isActive && challenge.isPublished !== false;
 }
 
 function sanitizeUser(user: UserCredentials): User {
