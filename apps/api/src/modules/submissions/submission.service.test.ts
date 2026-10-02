@@ -3,17 +3,19 @@ import { InMemoryStore } from "../../database/in-memory-store.js";
 import { defaultStudentId } from "../../database/seed.js";
 import { buildSeedData } from "../../database/seed.js";
 import { ScoreService } from "../scoring/score.service.js";
-import { SubmissionEvaluationService } from "./submission-evaluation.service.js";
+import {
+  type EvaluationResult,
+  SandboxUnavailableError,
+  SubmissionEvaluationService
+} from "./submission-evaluation.service.js";
 import {
   createSubmissionSchema,
+  INTERNAL_EVALUATION_ERROR_MESSAGE,
   SubmissionService
 } from "./submission.service.js";
 
-const validSumSolution = `
-const fs = require("fs");
-const [a, b] = fs.readFileSync(0, "utf8").trim().split(/\\s+/).map(Number);
-console.log(a + b);
-`;
+// "Soma de dois números" está no modo função: o aluno implementa somar(a, b).
+const validSumSolution = "function somar(a, b) { return a + b; }";
 
 function makeService() {
   const store = new InMemoryStore();
@@ -29,7 +31,7 @@ function makeService() {
 }
 
 describe("SubmissionService", () => {
-  it("registra submissao aceita e atualiza pontuacao", async () => {
+  it("registra submissão aceita e atualiza pontuação", async () => {
     const { store, submissionService } = makeService();
 
     const submission = await submissionService.submit({
@@ -48,7 +50,7 @@ describe("SubmissionService", () => {
     });
   });
 
-  it("nao duplica pontuacao para o mesmo desafio ja resolvido", async () => {
+  it("não duplica pontuação para o mesmo desafio já resolvido", async () => {
     const { store, submissionService } = makeService();
 
     await submissionService.submit({
@@ -72,14 +74,14 @@ describe("SubmissionService", () => {
     });
   });
 
-  it("registra submissao rejeitada sem pontuar", async () => {
+  it("registra submissão rejeitada sem pontuar", async () => {
     const { store, submissionService } = makeService();
 
     const submission = await submissionService.submit({
       userId: defaultStudentId,
       challengeSlug: "soma-de-dois-numeros",
       language: "javascript",
-      sourceCode: "console.log(999);"
+      sourceCode: "function somar() { return 999; }"
     });
 
     expect(submission.status).toBe("wrong_answer");
@@ -89,14 +91,14 @@ describe("SubmissionService", () => {
     });
   });
 
-  it("rejeita solucao que apenas imprime a resposta do exemplo publico", async () => {
+  it("rejeita solução que apenas imprime a resposta do exemplo publico", async () => {
     const { store, submissionService } = makeService();
 
     const submission = await submissionService.submit({
       userId: defaultStudentId,
       challengeSlug: "soma-de-dois-numeros",
       language: "javascript",
-      sourceCode: "console.log(8);"
+      sourceCode: "function somar() { return 8; }"
     });
 
     expect(submission.status).toBe("wrong_answer");
@@ -106,7 +108,7 @@ describe("SubmissionService", () => {
     });
   });
 
-  it("valida codigo vazio antes de criar submissao", () => {
+  it("valida código vazio antes de criar submissão", () => {
     const result = createSubmissionSchema.safeParse({
       language: "javascript",
       sourceCode: "   "
@@ -115,16 +117,13 @@ describe("SubmissionService", () => {
     expect(result.success).toBe(false);
   });
 
-  it("registra a submissao como pending antes de iniciar a avaliacao", async () => {
+  it("registra a submissão como pending antes de iniciar a avaliação", async () => {
     const store = new InMemoryStore();
-    let finishEvaluation: ((value: {
-      status: "accepted";
-      testResults: [];
-    }) => void) | undefined;
+    let finishEvaluation: ((value: EvaluationResult) => void) | undefined;
     const evaluator = {
       evaluate: vi.fn(
         () =>
-          new Promise<{ status: "accepted"; testResults: [] }>((resolve) => {
+          new Promise<EvaluationResult>((resolve) => {
             finishEvaluation = resolve;
           })
       )
@@ -148,11 +147,18 @@ describe("SubmissionService", () => {
       expect(submissions[0].evaluatedAt).toBeNull();
     });
 
-    finishEvaluation?.({ status: "accepted", testResults: [] });
+    finishEvaluation?.({
+      status: "accepted",
+      testResults: [],
+      totalTests: 24,
+      passedTests: 24,
+      errorMessage: null,
+      compileWarnings: null
+    });
     await resultPromise;
   });
 
-  it("premia apenas uma de duas submissoes aceitas simultaneamente", async () => {
+  it("premia apenas uma de duas submissões aceitas simultaneamente", async () => {
     const { store, submissionService } = makeService();
 
     const results = await Promise.all([
@@ -179,7 +185,7 @@ describe("SubmissionService", () => {
     });
   });
 
-  it("finaliza como runtime_error quando a infraestrutura de avaliacao falha", async () => {
+  it("finaliza como internal_error quando a infraestrutura de avaliação falha", async () => {
     const store = new InMemoryStore();
     const evaluator = {
       evaluate: vi.fn().mockRejectedValue(new Error("falha interna sensivel"))
@@ -189,23 +195,109 @@ describe("SubmissionService", () => {
       evaluator,
       new ScoreService(store)
     );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    const submission = await service.submit({
+    try {
+      const submission = await service.submit({
+        userId: defaultStudentId,
+        challengeSlug: "soma-de-dois-numeros",
+        language: "javascript",
+        sourceCode: validSumSolution
+      });
+
+      expect(submission.status).toBe("internal_error");
+      expect(submission.scoreAwarded).toBe(0);
+      expect(submission.evaluatedAt).toBeInstanceOf(Date);
+      expect(submission.testResults).toHaveLength(0);
+      expect(JSON.stringify(submission)).not.toContain("falha interna sensivel");
+      expect(submission.errorMessage).toBe(INTERNAL_EVALUATION_ERROR_MESSAGE);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("rejeita soluções que apenas imprimem respostas fixas", async () => {
+    const { submissionService } = makeService();
+    const attempts = [
+      ["soma-de-dois-numeros", "function somar() { return 8; }"],
+      [
+        "par-ou-impar",
+        "function parOuImpar(n) { return n === 4 ? 'PAR' : 'IMPAR'; }"
+      ],
+      [
+        "maior-de-tres-numeros",
+        "function maiorDeTres(a, b) { return b > a ? b : a; }"
+      ]
+    ] as const;
+
+    for (const [challengeSlug, sourceCode] of attempts) {
+      const submission = await submissionService.submit({
+        userId: defaultStudentId,
+        challengeSlug,
+        language: "javascript",
+        sourceCode
+      });
+      expect(submission.status, challengeSlug).toBe("wrong_answer");
+    }
+  });
+
+  it("reprova paridade que ignora números negativos", async () => {
+    const { submissionService } = makeService();
+
+    const submission = await submissionService.submit({
+      userId: defaultStudentId,
+      challengeSlug: "par-ou-impar",
+      language: "javascript",
+      sourceCode:
+        "function parOuImpar(n) { return n % 2 === 1 ? 'IMPAR' : 'PAR'; }"
+    });
+
+    expect(submission.status).toBe("wrong_answer");
+  });
+
+  it("executa apenas casos publicos no modo Executar, sem gravar submissão", async () => {
+    const { store, submissionService } = makeService();
+
+    const run = await submissionService.run({
       userId: defaultStudentId,
       challengeSlug: "soma-de-dois-numeros",
       language: "javascript",
-      sourceCode: validSumSolution
+      sourceCode: validSumSolution,
+      customInput: "[100, 23]"
     });
 
-    expect(submission.status).toBe("runtime_error");
-    expect(submission.evaluatedAt).toBeInstanceOf(Date);
-    expect(JSON.stringify(submission)).not.toContain("falha interna sensivel");
-    expect(submission.testResults[0].error).toBe(
-      "Falha interna durante a avaliacao."
-    );
+    expect(run.cases.map((runCase) => runCase.label)).toEqual([
+      "Caso 1",
+      "Caso 2",
+      "Entrada personalizada"
+    ]);
+    expect(run.cases.slice(0, 2).every((runCase) => runCase.passed)).toBe(true);
+    expect(run.cases[2].actualOutput.trim()).toBe("123");
+    expect(JSON.stringify(run)).not.toContain("[-2,10]");
+    expect(await store.listSubmissions(defaultStudentId)).toHaveLength(0);
+    await expect(store.getScore(defaultStudentId)).resolves.toMatchObject({
+      totalPoints: 0
+    });
   });
 
-  it("nao avalia nem pontua desafio sem casos de teste", async () => {
+  it("responde 503 no modo Executar quando o sandbox não existe", async () => {
+    const store = new InMemoryStore();
+    const evaluator = {
+      run: vi.fn().mockRejectedValue(new SandboxUnavailableError("spawn unshare ENOENT"))
+    } as unknown as SubmissionEvaluationService;
+    const service = new SubmissionService(store, evaluator, new ScoreService(store));
+
+    await expect(
+      service.run({
+        userId: defaultStudentId,
+        challengeSlug: "soma-de-dois-numeros",
+        language: "javascript",
+        sourceCode: validSumSolution
+      })
+    ).rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  it("não avalia nem pontua desafio sem casos de teste", async () => {
     const seed = buildSeedData();
     seed.challenges[0] = { ...seed.challenges[0], testCases: [] };
     const store = new InMemoryStore(seed);

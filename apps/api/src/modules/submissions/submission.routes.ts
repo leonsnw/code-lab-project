@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "../auth/auth.middleware.js";
 import { presentSubmission } from "./submission.presenter.js";
 import {
   createSubmissionSchema,
+  runSolutionSchema,
   type SubmissionService
 } from "./submission.service.js";
 
@@ -21,7 +22,7 @@ export function createSubmissionRouter({
   requireAuth
 }: SubmissionRouterDependencies): Router {
   const router = Router();
-const submissionRateLimit = rateLimit({
+  const submissionRateLimit = rateLimit({
     windowMs: 5 * 60 * 1000,
     limit: 20,
     standardHeaders: "draft-8",
@@ -31,11 +32,49 @@ const submissionRateLimit = rateLimit({
     }
   });
 
+  const runRateLimit = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 60,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Muitas execucoes. Aguarde alguns minutos antes de tentar novamente."
+    }
+  });
+
   const historyQuerySchema = z.object({
     status: z
-      .enum(["pending", "accepted", "wrong_answer", "runtime_error", "timeout"])
+      .enum([
+        "pending",
+        "accepted",
+        "wrong_answer",
+        "runtime_error",
+        "timeout",
+        "compile_error",
+        "rule_violation",
+        "internal_error"
+      ])
       .optional()
   });
+
+  router.post(
+    "/challenges/:slug/run",
+    requireAuth,
+    runRateLimit,
+    async (request, response) => {
+      const user = getAuthenticatedUser(response);
+      const challengeSlug = z.string().parse(request.params.slug);
+      const body = runSolutionSchema.parse(request.body);
+      const run = await submissionService.run({
+        challengeSlug,
+        userId: user.id,
+        language: body.language,
+        sourceCode: body.sourceCode,
+        customInput: body.customInput
+      });
+      response.json({ run });
+    }
+  );
 
   router.post(
     "/challenges/:slug/submissions",
