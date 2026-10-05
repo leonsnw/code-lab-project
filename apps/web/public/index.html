@@ -3,341 +3,43 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CodeLab - Ambiente de Teste</title>
+    <meta name="description" content="CodeLab: plataforma de desafios de programação com correção automática." />
+    <title>CodeLab</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23171717'/%3E%3Cpath d='m12 11-5 5 5 5M20 11l5 5-5 5' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/js/theme-boot.js"></script>
   </head>
   <body>
-    <header>
-      <h1>CodeLab</h1>
-      <p>
-        Ambiente essencial para testar login, desafios, submissao por casos de
-        teste, pontuacao, historico, comentarios e avaliacoes.
-      </p>
-    </header>
+    <a class="skip-link" href="#app">Pular para o conteúdo</a>
 
-    <nav>
-      <a href="/health">Health da API</a>
-      <a href="/api/challenges">Lista publica de desafios</a>
-      <a href="/api/ranking">Ranking publico</a>
-    </nav>
+    <div class="shell">
+      <aside id="sidebar" class="sidebar" aria-label="Navegação"></aside>
+      <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
 
-    <section id="auth-section">
-      <h2>Acesso ao CodeLab</h2>
-      <p id="auth-message" class="empty">
-        Entre com uma conta existente ou cadastre um novo estudante.
-      </p>
-
-      <div class="auth-grid">
-        <form id="login-form">
-          <fieldset>
-            <legend>Entrar</legend>
-            <label for="login-email">E-mail</label>
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-            />
-
-            <label for="login-password">Senha</label>
-            <input
-              id="login-password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              minlength="6"
-              required
-            />
-
-            <button type="submit">Entrar</button>
-          </fieldset>
-        </form>
-
-        <form id="register-form">
-          <fieldset>
-            <legend>Criar conta de estudante</legend>
-            <label for="register-name">Nome completo</label>
-            <input
-              id="register-name"
-              name="name"
-              type="text"
-              autocomplete="name"
-              maxlength="100"
-              required
-            />
-
-            <label for="register-email">E-mail</label>
-            <input
-              id="register-email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-            />
-
-            <label for="register-password">Senha</label>
-            <input
-              id="register-password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              minlength="6"
-              maxlength="72"
-              required
-            />
-
-            <label for="register-password-confirmation">Confirmar senha</label>
-            <input
-              id="register-password-confirmation"
-              name="passwordConfirmation"
-              type="password"
-              autocomplete="new-password"
-              minlength="6"
-              maxlength="72"
-              required
-            />
-
-            <button type="submit">Criar conta</button>
-          </fieldset>
-        </form>
+      <div class="main-col">
+        <header id="topbar" class="topbar"></header>
+        <main id="app" class="page" tabindex="-1">
+          <div class="loading-block">Carregando…</div>
+        </main>
+        <footer class="site-footer" id="site-footer">
+          <span>CodeLab · plataforma de estudo de programação</span>
+          <nav aria-label="Rodapé">
+            <a href="#/trilhas">Trilhas</a>
+            <a href="#/desafios">Desafios</a>
+            <a href="#/termos">Termos de uso</a>
+            <a href="#/privacidade">Privacidade</a>
+            <button type="button" class="link-button" data-open-shortcuts>Atalhos de teclado (?)</button>
+          </nav>
+        </footer>
       </div>
+    </div>
 
-      <details>
-        <summary>Contas locais de demonstracao</summary>
-        <table>
-          <thead>
-            <tr><th>Papel</th><th>E-mail</th><th>Senha</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Estudante</td><td>marina@codelab.local</td><td>123456</td></tr>
-            <tr><td>Administrador</td><td>admin@codelab.local</td><td>admin123</td></tr>
-          </tbody>
-        </table>
-      </details>
-    </section>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+    <div id="overlay-root"></div>
 
-    <section id="session-section" hidden>
-      <h2>Sessao autenticada</h2>
-      <p>
-        <strong id="session-user">Usuario</strong>
-        <button id="logout-button" type="button">Sair</button>
-      </p>
-    </section>
-
-    <main id="app-content" hidden>
-      <section>
-        <h2>1. Estado atual</h2>
-        <table>
-          <tbody>
-            <tr><th>Usuario</th><td id="user-name">Carregando...</td></tr>
-            <tr><th>Papel</th><td id="user-role">Carregando...</td></tr>
-            <tr><th>Pontuacao total</th><td id="score-total">Carregando...</td></tr>
-            <tr><th>Desafios resolvidos</th><td id="solved-total">Carregando...</td></tr>
-            <tr><th>Desafios pendentes</th><td id="pending-total">Carregando...</td></tr>
-            <tr><th>Progresso por dificuldade</th><td id="difficulty-progress">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section>
-        <h2>2. Desafio</h2>
-        <p>
-          <label for="challenge-select">Selecionar desafio</label>
-          <select id="challenge-select"></select>
-          <button id="load-challenge" type="button">Carregar</button>
-        </p>
-        <div id="challenge">Carregando...</div>
-      </section>
-
-      <section>
-        <h2>3. Submissao</h2>
-        <p>
-          <label for="language">Linguagem</label>
-          <select id="language">
-            <option value="javascript">JavaScript</option>
-          </select>
-        </p>
-
-        <p>Exemplos rapidos:</p>
-        <p class="button-row">
-          <button type="button" data-sample="accepted">Codigo aceito</button>
-          <button type="button" data-sample="wrong_answer">Resposta errada</button>
-          <button type="button" data-sample="runtime_error">Erro de execucao</button>
-          <button type="button" data-sample="timeout">Timeout</button>
-        </p>
-
-        <label for="source-code">Codigo da solucao</label>
-        <textarea id="source-code" rows="14" spellcheck="false"></textarea>
-
-        <p><button id="submit-solution" type="button">Enviar solucao</button></p>
-      </section>
-
-      <section id="result-section">
-        <h2>4. Resultado da ultima submissao</h2>
-        <div id="result-summary" class="empty">Nenhuma submissao enviada ainda.</div>
-        <div id="test-results"></div>
-        <details>
-          <summary>Ver resposta JSON completa</summary>
-          <pre id="submission-json">Nenhuma submissao enviada ainda.</pre>
-        </details>
-      </section>
-
-      <section>
-        <h2>5. Historico da conta autenticada</h2>
-        <p class="history-controls">
-          <label for="history-status-filter">Filtrar por status</label>
-          <select id="history-status-filter">
-            <option value="">Todos</option>
-            <option value="accepted">Aceitas</option>
-            <option value="wrong_answer">Respostas erradas</option>
-            <option value="runtime_error">Erros de execucao</option>
-            <option value="timeout">Timeouts</option>
-            <option value="pending">Aguardando avaliacao</option>
-          </select>
-          <button id="history-refresh" type="button">Atualizar historico</button>
-        </p>
-        <div id="history">Carregando...</div>
-      </section>
-
-      <section>
-        <h2>6. Avaliacao do desafio</h2>
-        <div id="rating-summary" class="empty">Carregando avaliacao...</div>
-        <form id="rating-form">
-          <fieldset class="compact-fieldset">
-            <legend>Sua nota</legend>
-            <div class="rating-options">
-              <label><input type="radio" name="value" value="1" required /> 1</label>
-              <label><input type="radio" name="value" value="2" /> 2</label>
-              <label><input type="radio" name="value" value="3" /> 3</label>
-              <label><input type="radio" name="value" value="4" /> 4</label>
-              <label><input type="radio" name="value" value="5" /> 5</label>
-            </div>
-            <button type="submit">Salvar avaliacao</button>
-          </fieldset>
-        </form>
-        <p id="rating-message" class="empty">Selecione uma nota de 1 a 5.</p>
-      </section>
-
-      <section>
-        <h2>7. Comentarios</h2>
-        <form id="comment-form">
-          <label for="comment-content">Novo comentario</label>
-          <textarea
-            id="comment-content"
-            name="content"
-            rows="4"
-            maxlength="1000"
-            required
-          ></textarea>
-          <p><span id="comment-count">0</span>/1000 caracteres</p>
-          <button type="submit">Comentar</button>
-        </form>
-        <p id="comment-message" class="empty">
-          Compartilhe uma observacao sobre o desafio.
-        </p>
-        <div id="comments">Carregando comentarios...</div>
-      </section>
-
-      <section id="admin-section" hidden>
-        <h2>8. Administracao de desafios</h2>
-        <p id="admin-message" class="empty">
-          Crie um desafio ou selecione um item da tabela para editar.
-        </p>
-
-        <h3>Indicadores de desempenho</h3>
-        <p>
-          <button id="admin-refresh-statistics" type="button">
-            Atualizar estatisticas
-          </button>
-          <small id="admin-statistics-generated"></small>
-        </p>
-        <div id="admin-statistics-overview">Carregando indicadores...</div>
-
-        <h3>Destaques</h3>
-        <div id="admin-statistics-highlights">Carregando destaques...</div>
-
-        <h3>Submissoes por status</h3>
-        <div id="admin-submission-statuses">Carregando distribuicao...</div>
-
-        <h3>Desempenho por dificuldade</h3>
-        <div id="admin-difficulty-statistics">Carregando dificuldades...</div>
-
-        <h3>Desempenho por desafio</h3>
-        <div id="admin-challenge-statistics">Carregando desempenho...</div>
-
-        <h3>Desempenho por usuario</h3>
-        <div id="admin-user-statistics">Carregando usuarios...</div>
-
-        <h3>Gerenciamento do catalogo</h3>
-        <div id="admin-challenges">Carregando desafios administrativos...</div>
-
-        <form id="admin-challenge-form">
-          <fieldset>
-            <legend id="admin-form-title">Novo desafio</legend>
-            <input id="admin-challenge-id" name="challengeId" type="hidden" />
-
-            <label for="admin-title">Titulo</label>
-            <input id="admin-title" name="title" type="text" minlength="3" maxlength="120" required />
-
-            <label for="admin-slug">Slug</label>
-            <input id="admin-slug" name="slug" type="text" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="120" required />
-
-            <label for="admin-description">Enunciado</label>
-            <textarea id="admin-description" name="description" rows="5" minlength="10" maxlength="5000" required></textarea>
-
-            <div class="form-grid">
-              <p>
-                <label for="admin-difficulty">Dificuldade</label>
-                <select id="admin-difficulty" name="difficulty" required>
-                  <option value="easy">Facil</option>
-                  <option value="medium">Medio</option>
-                  <option value="hard">Dificil</option>
-                </select>
-              </p>
-              <p>
-                <label for="admin-points">Pontos</label>
-                <input id="admin-points" name="points" type="number" min="1" max="10000" value="100" required />
-              </p>
-            </div>
-
-            <label for="admin-tags">Tags separadas por virgula</label>
-            <input id="admin-tags" name="tags" type="text" value="Logica, Iniciante" required />
-
-            <label for="admin-constraints">Restricoes, uma por linha</label>
-            <textarea id="admin-constraints" name="constraints" rows="4"></textarea>
-
-            <label for="admin-examples">Exemplos em JSON</label>
-            <textarea id="admin-examples" name="examples" rows="6" spellcheck="false">[
-  { "input": "1 2", "output": "3" }
-]</textarea>
-
-            <label for="admin-test-cases">Casos de teste em JSON</label>
-            <textarea id="admin-test-cases" name="testCases" rows="10" spellcheck="false" required>[
-  {
-    "input": "1 2",
-    "expectedOutput": "3",
-    "isPublic": true,
-    "weight": 1
-  }
-]</textarea>
-
-            <p id="admin-active-row" hidden>
-              <label class="inline-label">
-                <input id="admin-active" name="isActive" type="checkbox" checked />
-                Desafio ativo no catalogo
-              </label>
-            </p>
-
-            <p class="button-row">
-              <button type="submit">Salvar desafio</button>
-              <button id="admin-cancel" type="button">Cancelar edicao</button>
-            </p>
-          </fieldset>
-        </form>
-      </section>
-    </main>
-
-    <script src="/client.js"></script>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
