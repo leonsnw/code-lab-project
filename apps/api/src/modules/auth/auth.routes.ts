@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from "express";
 import { rateLimit } from "express-rate-limit";
+import type { User } from "../../domain/types.js";
 import type { AuthService } from "./auth.service.js";
 import {
   clearSessionCookie,
@@ -8,12 +9,15 @@ import {
 
 interface AuthRouterDependencies {
   authService: AuthService;
+  /** Chamado depois do cadastro (ex.: enviar o e-mail de verificação). Falhas não impedem o cadastro. */
+  onRegistered?: (user: User) => Promise<void>;
   requireAuth: RequestHandler;
   production: boolean;
 }
 
 export function createAuthRouter({
   authService,
+  onRegistered,
   requireAuth,
   production
 }: AuthRouterDependencies): Router {
@@ -29,6 +33,7 @@ export function createAuthRouter({
   router.post("/register", authRateLimit, async (request, response) => {
     const session = await authService.register(request.body);
     setSessionCookie(response, session.accessToken, production);
+    await onRegistered?.(session.user).catch((error) => console.error("Falha ao enviar o e-mail de verificação:", error));
     response.status(201).json({
       message: "Conta criada com sucesso.",
       user: session.user

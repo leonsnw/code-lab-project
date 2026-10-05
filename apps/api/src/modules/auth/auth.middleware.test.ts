@@ -51,10 +51,10 @@ describe("middlewares de autorizacao", () => {
     const response = await request(makeApp()).get("/protected");
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe("Faca login para continuar.");
+    expect(response.body.error).toBe("Faça login para continuar.");
   });
 
-  it("permite usuario autenticado em rota protegida comum", async () => {
+  it("permite usuário autenticado em rota protegida comum", async () => {
     const response = await request(makeApp())
       .get("/protected")
       .set("Authorization", "Bearer student-token");
@@ -69,7 +69,7 @@ describe("middlewares de autorizacao", () => {
 
     expect(response.status).toBe(403);
     expect(response.body.error).toBe(
-      "Voce nao possui permissao para esta acao."
+      "Você não possui permissão para esta ação."
     );
   });
 

@@ -4,40 +4,54 @@ import { DomainError } from "../../common/domain-error.js";
 import type { CodeLabStore } from "../../database/codelab-store.js";
 import type { User } from "../../domain/types.js";
 import type { PasswordHasher, TokenService } from "./auth.contracts.js";
+import { passwordVersion } from "./password-version.js";
 
-const SALT_ROUNDS = 10;
+export const SALT_ROUNDS = 10;
 const DUMMY_PASSWORD_HASH =
   "$2b$10$fH3DkQnuSlijgJH9aknS6.aP8l5.uolrmIvkHdjFk.55mx7l9Puri";
+
+export const passwordSchema = z
+  .string()
+  .min(1, "Senha é obrigatória.")
+  .min(6, "A senha deve ter pelo menos 6 caracteres.")
+  .max(72, "A senha deve ter no máximo 72 caracteres.");
+
+export const nameSchema = z
+  .string()
+  .trim()
+  .min(1, "Nome é obrigatório.")
+  .max(100, "O nome deve ter no máximo 100 caracteres.")
+  .transform((name) => name.replace(/\s+/g, " "));
 
 const registerSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Nome e obrigatorio.")
-    .max(100, "O nome deve ter no maximo 100 caracteres.")
+    .min(1, "Nome é obrigatório.")
+    .max(100, "O nome deve ter no máximo 100 caracteres.")
     .transform((name) => name.replace(/\s+/g, " ")),
   email: z
     .string()
     .trim()
-    .min(1, "E-mail e obrigatorio.")
-    .email("E-mail invalido.")
-    .max(254, "O e-mail deve ter no maximo 254 caracteres.")
+    .min(1, "E-mail é obrigatório.")
+    .email("E-mail inválido.")
+    .max(254, "O e-mail deve ter no máximo 254 caracteres.")
     .transform((email) => email.toLowerCase()),
   password: z
     .string()
-    .min(1, "Senha e obrigatoria.")
+    .min(1, "Senha é obrigatória.")
     .min(6, "A senha deve ter pelo menos 6 caracteres.")
-    .max(72, "A senha deve ter no maximo 72 caracteres.")
+    .max(72, "A senha deve ter no máximo 72 caracteres.")
 });
 
 const loginSchema = z.object({
   email: z
     .string()
     .trim()
-    .min(1, "E-mail e obrigatorio.")
-    .email("E-mail invalido.")
+    .min(1, "E-mail é obrigatório.")
+    .email("E-mail inválido.")
     .transform((email) => email.toLowerCase()),
-  password: z.string().min(1, "Senha e obrigatoria.").max(72)
+  password: z.string().min(1, "Senha é obrigatória.").max(72)
 });
 
 export interface AuthSession {
@@ -57,7 +71,7 @@ export class AuthService {
     const existingUser = await this.store.findUserCredentialsByEmail(data.email);
 
     if (existingUser) {
-      throw new DomainError("E-mail ja cadastrado.", 409);
+      throw new DomainError("E-mail já cadastrado.", 409);
     }
 
     const passwordHash = await this.passwordHasher.hash(
@@ -72,7 +86,7 @@ export class AuthService {
       role: "student"
     });
 
-    return this.startSession(user);
+    return this.startSession(user, passwordHash);
   }
 
   async login(input: unknown): Promise<AuthSession> {
@@ -92,22 +106,22 @@ export class AuthService {
       email: credentials.email,
       role: credentials.role
     };
-    return this.startSession(user);
+    return this.startSession(user, credentials.passwordHash);
   }
 
-  private startSession(user: User): AuthSession {
+  startSession(user: User, passwordHash: string): AuthSession {
     return {
       user,
-      accessToken: this.tokenService.issue(user)
+      accessToken: this.tokenService.issue(user, { passwordVersion: passwordVersion(passwordHash) })
     };
   }
 }
 
-function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
+export function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
     throw new DomainError(
-      result.error.issues[0]?.message ?? "Entrada invalida.",
+      result.error.issues[0]?.message ?? "Entrada inválida.",
       400
     );
   }
@@ -115,5 +129,5 @@ function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
 }
 
 function invalidCredentialsError(): DomainError {
-  return new DomainError("E-mail ou senha invalidos.", 401);
+  return new DomainError("E-mail ou senha inválidos.", 401);
 }

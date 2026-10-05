@@ -15,7 +15,7 @@ export const errorHandler: ErrorRequestHandler = (
 
   if (error instanceof z.ZodError) {
     response.status(400).json({
-      error: "Entrada invalida.",
+      error: "Entrada inválida.",
       details: error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message

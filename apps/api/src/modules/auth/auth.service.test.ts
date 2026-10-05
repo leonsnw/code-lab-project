@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryStore } from "../../database/in-memory-store.js";
 import type { PasswordHasher, TokenService } from "./auth.contracts.js";
 import { AuthService } from "./auth.service.js";
+import { passwordVersion } from "./password-version.js";
 
 function makeSubject() {
   const store = new InMemoryStore({ users: [], challenges: [], scores: [] });
@@ -24,7 +25,7 @@ describe("AuthService", () => {
   });
 
   describe("register", () => {
-    it("cadastra estudante, normaliza os dados e inicia uma sessao", async () => {
+    it("cadastra estudante, normaliza os dados e inicia uma sessão", async () => {
       const { store, passwordHasher, tokenService, service } = makeSubject();
 
       const result = await service.register({
@@ -43,17 +44,17 @@ describe("AuthService", () => {
       });
       expect(result.user).not.toHaveProperty("passwordHash");
       expect(passwordHasher.hash).toHaveBeenCalledWith("123456", 10);
-      expect(tokenService.issue).toHaveBeenCalledWith(result.user);
+      expect(tokenService.issue).toHaveBeenCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password") });
       await expect(store.findUserCredentialsByEmail("ana@email.com")).resolves.toMatchObject({
         passwordHash: "hashed-password"
       });
     });
 
     it.each([
-      [{ name: "", email: "ana@email.com", password: "123456" }, "Nome e obrigatorio."],
-      [{ name: "Ana Silva", email: "email-invalido", password: "123456" }, "E-mail invalido."],
+      [{ name: "", email: "ana@email.com", password: "123456" }, "Nome é obrigatório."],
+      [{ name: "Ana Silva", email: "email-invalido", password: "123456" }, "E-mail inválido."],
       [{ name: "Ana Silva", email: "ana@email.com", password: "123" }, "A senha deve ter pelo menos 6 caracteres."]
-    ])("rejeita cadastro invalido", async (input, message) => {
+    ])("rejeita cadastro inválido", async (input, message) => {
       const { store, service } = makeSubject();
 
       await expect(service.register(input)).rejects.toMatchObject({
@@ -75,7 +76,7 @@ describe("AuthService", () => {
       vi.mocked(passwordHasher.hash).mockClear();
 
       await expect(service.register(input)).rejects.toMatchObject({
-        message: "E-mail ja cadastrado.",
+        message: "E-mail já cadastrado.",
         statusCode: 409
       });
       expect(passwordHasher.hash).not.toHaveBeenCalled();
@@ -101,7 +102,7 @@ describe("AuthService", () => {
         "123456",
         "hashed-password"
       );
-      expect(tokenService.issue).toHaveBeenLastCalledWith(result.user);
+      expect(tokenService.issue).toHaveBeenLastCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password") });
       expect(result.user).not.toHaveProperty("passwordHash");
     });
 
@@ -111,7 +112,7 @@ describe("AuthService", () => {
       await expect(
         service.login({ email: "ninguem@email.com", password: "123456" })
       ).rejects.toMatchObject({
-        message: "E-mail ou senha invalidos.",
+        message: "E-mail ou senha inválidos.",
         statusCode: 401
       });
 
@@ -125,7 +126,7 @@ describe("AuthService", () => {
       await expect(
         service.login({ email: "ana@email.com", password: "senha-errada" })
       ).rejects.toMatchObject({
-        message: "E-mail ou senha invalidos.",
+        message: "E-mail ou senha inválidos.",
         statusCode: 401
       });
     });

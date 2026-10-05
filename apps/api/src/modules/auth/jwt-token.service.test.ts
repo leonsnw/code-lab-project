@@ -9,7 +9,7 @@ const student = {
 };
 
 describe("JwtTokenService", () => {
-  it("emite e valida um token com a identidade do usuario", () => {
+  it("emite e valida um token com a identidade do usuário", () => {
     const service = new JwtTokenService("segredo-de-teste-com-32-caracteres");
 
     const token = service.issue(student);
@@ -25,7 +25,7 @@ describe("JwtTokenService", () => {
     const verifier = new JwtTokenService("segundo-segredo-com-32-caracteres");
 
     expect(() => verifier.verify(issuer.issue(student))).toThrow(
-      "Sessao invalida ou expirada. Entre novamente."
+      "Sessão inválida ou expirada. Entre novamente."
     );
   });
 });
