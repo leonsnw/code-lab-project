@@ -36,7 +36,7 @@ export class RatingService {
       input.value > 5
     ) {
       throw new DomainError(
-        "A avaliacao deve ser um numero inteiro entre 1 e 5.",
+        "A avaliação deve ser um número inteiro entre 1 e 5.",
         400
       );
     }
@@ -60,8 +60,8 @@ export class RatingService {
 
   private async findChallenge(challengeSlug: string) {
     const challenge = await this.store.findChallengeBySlug(challengeSlug);
-    if (!challenge || !challenge.isActive) {
-      throw new DomainError("Desafio nao encontrado.", 404);
+    if (!challenge || !challenge.isActive || challenge.isPublished === false) {
+      throw new DomainError("Desafio não encontrado.", 404);
     }
     return challenge;
   }

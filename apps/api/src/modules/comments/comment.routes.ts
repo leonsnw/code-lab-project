@@ -8,7 +8,7 @@ const paramsSchema = z.object({
 });
 
 const commentSchema = z.object({
-  content: z.string().trim().min(1).max(1000)
+  content: z.string().trim().min(1).max(4000)
 });
 
 export function createCommentRouter(

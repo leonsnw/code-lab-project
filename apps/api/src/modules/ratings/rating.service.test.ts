@@ -4,7 +4,7 @@ import { InMemoryStore } from "../../database/in-memory-store.js";
 import { RatingService } from "./rating.service.js";
 
 describe("RatingService", () => {
-  it("atualiza o voto do mesmo usuario sem aumentar a quantidade", async () => {
+  it("atualiza o voto do mesmo usuário sem aumentar a quantidade", async () => {
     const service = new RatingService(
       new InMemoryStore(),
       () => "rating-1",
@@ -30,7 +30,7 @@ describe("RatingService", () => {
     });
   });
 
-  it.each([0, 6, 4.5])("rejeita a nota invalida %s", async (value) => {
+  it.each([0, 6, 4.5])("rejeita a nota inválida %s", async (value) => {
     const service = new RatingService(new InMemoryStore());
 
     await expect(
@@ -40,7 +40,7 @@ describe("RatingService", () => {
         value
       })
     ).rejects.toEqual(
-      new DomainError("A avaliacao deve ser um numero inteiro entre 1 e 5.", 400)
+      new DomainError("A avaliação deve ser um número inteiro entre 1 e 5.", 400)
     );
   });
 });

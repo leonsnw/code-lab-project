@@ -3,6 +3,9 @@ import { DomainError } from "../../common/domain-error.js";
 import type { CodeLabStore } from "../../database/codelab-store.js";
 import type { Comment } from "../../domain/types.js";
 
+/** Comentários aceitam Markdown (código e ||spoiler||). */
+export const MAX_COMMENT_LENGTH = 4000;
+
 export interface CreateCommentInput {
   challengeSlug: string;
   userId: string;
@@ -24,13 +27,10 @@ export class CommentService {
   async create(input: CreateCommentInput): Promise<Comment> {
     const content = input.content.trim();
     if (!content) {
-      throw new DomainError("Comentario nao pode estar vazio.", 400);
+      throw new DomainError("O comentário não pode estar vazio.", 400);
     }
-    if (content.length > 1000) {
-      throw new DomainError(
-        "Comentario deve ter no maximo 1000 caracteres.",
-        400
-      );
+    if (content.length > MAX_COMMENT_LENGTH) {
+      throw new DomainError(`O comentário deve ter no máximo ${MAX_COMMENT_LENGTH} caracteres.`, 400);
     }
 
     const challenge = await this.findChallenge(input.challengeSlug);
@@ -47,8 +47,8 @@ export class CommentService {
 
   private async findChallenge(challengeSlug: string) {
     const challenge = await this.store.findChallengeBySlug(challengeSlug);
-    if (!challenge || !challenge.isActive) {
-      throw new DomainError("Desafio nao encontrado.", 404);
+    if (!challenge || !challenge.isActive || challenge.isPublished === false) {
+      throw new DomainError("Desafio não encontrado.", 404);
     }
     return challenge;
   }

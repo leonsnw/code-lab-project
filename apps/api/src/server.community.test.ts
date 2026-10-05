@@ -1,119 +1,96 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { InMemoryStore } from "./database/in-memory-store.js";
+import { computeStreaks } from "./modules/stats/stats.service.js";
 import { createApp } from "./server.js";
 
+const SOMA = "function somar(a, b) { return a + b; }";
+
 function makeApp() {
-  return createApp(new InMemoryStore(), {
-    jwtSecret: "segredo-da-comunidade-com-32-caracteres",
-    environment: "test"
-  });
+  return createApp(new InMemoryStore(), { jwtSecret: "segredo-da-comunidade-com-32-caracteres!", environment: "test" });
 }
 
-async function createStudent(
-  app: ReturnType<typeof createApp>,
-  name: string,
-  email: string
-) {
+async function student(app: ReturnType<typeof createApp>, name: string, email: string) {
   const agent = request.agent(app);
-  await agent.post("/api/auth/register").send({
-    name,
-    email,
-    password: "123456"
-  });
-  return agent;
+  const response = await agent.post("/api/auth/register").send({ name, email, password: "123456" });
+  return { agent, id: response.body.user.id as string };
 }
 
-describe("API de comentarios e avaliacoes", () => {
-  it("protege as interacoes e valida as entradas", async () => {
+describe("sequencia de dias", () => {
+  it("conta a sequencia atual ate hoje ou ontem e a maior sequencia", () => {
+    const days = new Set(["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-10", "2026-09-11"]);
+    expect(computeStreaks(days, "2026-09-11")).toEqual({ current: 2, longest: 3 });
+    expect(computeStreaks(days, "2026-09-12")).toEqual({ current: 2, longest: 3 });
+    expect(computeStreaks(days, "2026-09-13")).toEqual({ current: 0, longest: 3 });
+    expect(computeStreaks(new Set(["2026-02-28", "2026-03-01"]), "2026-03-01")).toEqual({ current: 2, longest: 2 });
+  });
+});
+
+describe("atividade, conquistas, tempos, ranking e perfil publico", { timeout: 60000 }, () => {
+  it("registra atividade do dia, sequencia e conquistas", async () => {
     const app = makeApp();
+    const { agent } = await student(app, "Ana Atividade", "ana.atividade@codelab.local");
 
-    await request(app)
-      .post("/api/challenges/soma-de-dois-numeros/comments")
-      .send({ content: "Comentario" })
-      .expect(401);
-    await request(app)
-      .put("/api/challenges/soma-de-dois-numeros/rating")
-      .send({ value: 5 })
-      .expect(401);
+    await agent.get("/api/me/activity").expect(200);
+    await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({ language: "javascript", sourceCode: SOMA });
+    const { body } = await agent.get("/api/me/activity").expect(200);
 
-    const student = await createStudent(app, "Ana Lima", "ana@community.test");
-    await student
-      .post("/api/challenges/soma-de-dois-numeros/comments")
-      .send({ content: "   " })
-      .expect(400);
-    await student
-      .post("/api/challenges/soma-de-dois-numeros/comments")
-      .send({ content: "a".repeat(1001) })
-      .expect(400);
-    await student
-      .put("/api/challenges/soma-de-dois-numeros/rating")
-      .send({ value: 4.5 })
-      .expect(400);
+    expect(body.activity.days).toHaveLength(365);
+    expect(body.activity.days.at(-1)).toMatchObject({ submissions: 1, accepted: 1 });
+    expect(body.activity.currentStreak).toBe(1);
+    const earned = body.activity.badges.filter((badge: { earnedAt: string | null }) => badge.earnedAt).map((badge: { id: string }) => badge.id);
+    expect(earned).toEqual(["primeiro-aceito"]);
+    await request(app).get("/api/me/activity").expect(401);
   });
 
-  it("lista comentarios do mais recente para o mais antigo", async () => {
+  it("compara o tempo com as outras solucoes aceitas", async () => {
     const app = makeApp();
-    const ana = await createStudent(app, "Ana Lima", "ana@community.test");
-    const bia = await createStudent(app, "Bia Souza", "bia@community.test");
+    const first = await student(app, "Bia Tempo", "bia.tempo@codelab.local");
+    const second = await student(app, "Caio Tempo", "caio.tempo@codelab.local");
+    await first.agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({ language: "javascript", sourceCode: SOMA });
+    await second.agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({ language: "javascript", sourceCode: SOMA });
 
-    const firstComment = await ana
-      .post("/api/challenges/soma-de-dois-numeros/comments")
-      .send({ userId: "user-admin", content: " Primeiro comentario. " })
-      .expect(201);
-    await bia
-      .post("/api/challenges/soma-de-dois-numeros/comments")
-      .send({ content: "Segundo comentario." })
-      .expect(201);
+    const { body } = await second.agent.get("/api/challenges/soma-de-dois-numeros/runtime?language=javascript&ms=0").expect(200);
+    expect(body.runtime).toMatchObject({ language: "javascript", solutions: 2, runtimeMs: 0 });
+    expect(body.runtime.beatsPercent).toBe(100);
+    expect(body.runtime.buckets.reduce((sum: number, bucket: { count: number }) => sum + bucket.count, 0)).toBe(2);
 
-    const response = await ana.get(
-      "/api/challenges/soma-de-dois-numeros/comments"
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.body.comments).toHaveLength(2);
-    expect(response.body.comments[0]).toMatchObject({
-      content: "Segundo comentario.",
-      author: { name: "Bia Souza" }
-    });
-    expect(response.body.comments[1]).toMatchObject({
-      content: "Primeiro comentario.",
-      author: { name: "Ana Lima" }
-    });
-    expect(firstComment.body.comment.userId).not.toBe("user-admin");
+    const empty = await second.agent.get("/api/challenges/soma-de-dois-numeros/runtime?language=c").expect(200);
+    expect(empty.body.runtime).toMatchObject({ solutions: 0, runtimeMs: null, beatsPercent: null, buckets: [] });
+    await second.agent.get("/api/challenges/soma-de-dois-numeros/runtime?language=cobol").expect(400);
   });
 
-  it("calcula a media e substitui a avaliacao anterior do usuario", async () => {
+  it("filtra o ranking por periodo e por trilha", async () => {
     const app = makeApp();
-    const ana = await createStudent(app, "Ana Lima", "ana@community.test");
-    const bia = await createStudent(app, "Bia Souza", "bia@community.test");
+    const { agent } = await student(app, "Davi Ranking", "davi.ranking@codelab.local");
+    await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({ language: "javascript", sourceCode: SOMA });
 
-    await ana
-      .put("/api/challenges/soma-de-dois-numeros/rating")
-      .send({ value: 3 })
-      .expect(200);
-    await bia
-      .put("/api/challenges/soma-de-dois-numeros/rating")
-      .send({ value: 5 })
-      .expect(200);
-    const updated = await ana
-      .put("/api/challenges/soma-de-dois-numeros/rating")
-      .send({ value: 4 });
+    const week = await request(app).get("/api/ranking?periodo=semana").expect(200);
+    expect(week.body.ranking).toEqual([expect.objectContaining({ name: "Davi Ranking", totalPoints: 100, solvedChallenges: 1 })]);
 
-    expect(updated.body.rating.value).toBe(4);
-    expect(updated.body.summary).toEqual({
-      average: 4.5,
-      total: 2,
-      currentUserValue: 4
+    const fundamentos = await request(app).get("/api/ranking?periodo=mes&trilha=fundamentos").expect(200);
+    expect(fundamentos.body.ranking.map((entry: { name: string }) => entry.name)).toEqual(["Davi Ranking"]);
+    const estruturas = await request(app).get("/api/ranking?trilha=estrutura-de-dados").expect(200);
+    expect(estruturas.body.ranking).toEqual([]);
+
+    await request(app).get("/api/ranking?trilha=nao-existe").expect(404);
+    await request(app).get("/api/ranking?periodo=ano").expect(400);
+  });
+
+  it("mostra o perfil publico sem dados pessoais", async () => {
+    const app = makeApp();
+    const { agent, id } = await student(app, "Eva Perfil", "eva.perfil@codelab.local");
+    await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({ language: "python", sourceCode: "def somar(a, b):\n    return a + b" });
+
+    const { body } = await request(app).get(`/api/users/${id}/profile`).expect(200);
+    expect(body.profile).toMatchObject({
+      user: { id, name: "Eva Perfil" },
+      totalPoints: 100,
+      solvedChallenges: 1,
+      byDifficulty: { easy: 1, medium: 0, hard: 0 },
+      recent: [expect.objectContaining({ slug: "soma-de-dois-numeros", language: "python" })]
     });
-
-    const biaView = await bia.get(
-      "/api/challenges/soma-de-dois-numeros/rating"
-    );
-    expect(biaView.body.summary).toEqual({
-      average: 4.5,
-      total: 2,
-      currentUserValue: 5
-    });
+    expect(JSON.stringify(body)).not.toContain("eva.perfil@codelab.local");
+    await request(app).get("/api/users/nao-existe/profile").expect(404);
   });
 });

@@ -35,10 +35,10 @@ describe("CommentService", () => {
         userId: "user-marina",
         content: "   "
       })
-    ).rejects.toEqual(new DomainError("Comentario nao pode estar vazio.", 400));
+    ).rejects.toEqual(new DomainError("O comentário não pode estar vazio.", 400));
 
     await expect(service.list("desafio-inexistente")).rejects.toEqual(
-      new DomainError("Desafio nao encontrado.", 404)
+      new DomainError("Desafio não encontrado.", 404)
     );
   });
 });
