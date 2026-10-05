@@ -13,13 +13,13 @@ afterEach(() => {
   }
 });
 
-describe("configuracao de seguranca HTTP", () => {
+describe("configuração de seguranca HTTP", () => {
   it("exige JWT_SECRET explicito em producao", () => {
     delete process.env.JWT_SECRET;
 
     expect(() =>
       createApp(new InMemoryStore(), { environment: "production" })
-    ).toThrow("JWT_SECRET e obrigatorio");
+    ).toThrow("JWT_SECRET é obrigatório");
   });
 
   it("permite CORS apenas para origens configuradas", async () => {
@@ -66,7 +66,7 @@ describe("configuracao de seguranca HTTP", () => {
     expect(blocked.status).toBe(429);
   }, 30000);
 
-  it("limita tentativas repetidas de submissao para proteger os casos ocultos", async () => {
+  it("limita tentativas repetidas de submissão para proteger os casos ocultos", async () => {
     const app = createApp(new InMemoryStore(), {
       jwtSecret: "segredo-de-rate-limit-submissao-32-caracteres",
       environment: "test"
