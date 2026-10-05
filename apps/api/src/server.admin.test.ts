@@ -46,7 +46,7 @@ async function login(
 }
 
 describe("API administrativa de desafios", () => {
-  it("exige autenticacao e papel de administrador", async () => {
+  it("exige autenticação e papel de administrador", async () => {
     const app = makeApp();
 
     await request(app).get("/api/admin/challenges").expect(401);
@@ -129,7 +129,7 @@ describe("API administrativa de desafios", () => {
     await student.get(`/api/challenges/${payload.slug}`).expect(404);
     await student
       .post(`/api/challenges/${payload.slug}/comments`)
-      .send({ content: "Nao deve aceitar." })
+      .send({ content: "Não deve aceitar." })
       .expect(404);
     await student
       .put(`/api/challenges/${payload.slug}/rating`)

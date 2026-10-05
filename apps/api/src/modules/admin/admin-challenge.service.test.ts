@@ -72,7 +72,7 @@ describe("AdminChallengeService", () => {
         ...challengeInput,
         slug: "soma-de-dois-numeros"
       })
-    ).rejects.toEqual(new DomainError("Slug de desafio ja utilizado.", 409));
+    ).rejects.toEqual(new DomainError("Slug de desafio já utilizado.", 409));
   });
 
   it("edita os dados sem alterar id ou criador", async () => {
@@ -117,7 +117,7 @@ describe("AdminChallengeService", () => {
     ).toBe(false);
   });
 
-  it("exige casos publicos e ocultos para evitar submissao baseada em gabarito visivel", async () => {
+  it("exige casos publicos e ocultos para evitar submissão baseada em gabarito visivel", async () => {
     const service = makeService();
 
     await expect(
@@ -128,7 +128,7 @@ describe("AdminChallengeService", () => {
     ).rejects.toMatchObject({
       issues: expect.arrayContaining([
         expect.objectContaining({
-          message: "Cadastre ao menos um caso publico e um caso oculto."
+          message: "Cadastre ao menos um caso público e um caso oculto."
         })
       ])
     });

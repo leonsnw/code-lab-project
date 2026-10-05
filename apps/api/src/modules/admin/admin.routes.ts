@@ -6,6 +6,7 @@ import {
 } from "../auth/auth.middleware.js";
 import type { AdminChallengeService } from "./admin-challenge.service.js";
 import type { AdminStatisticsService } from "./admin-statistics.service.js";
+import type { AdminToolsService } from "./admin-tools.service.js";
 
 const challengeParamsSchema = z.object({
   challengeId: z.string().trim().min(1).max(120)
@@ -14,7 +15,8 @@ const challengeParamsSchema = z.object({
 export function createAdminRouter(
   challengeService: AdminChallengeService,
   statisticsService: AdminStatisticsService,
-  requireAuth: RequestHandler
+  requireAuth: RequestHandler,
+  toolsService?: AdminToolsService
 ): Router {
   const router = Router();
   router.use(requireAuth, requireRole("admin"));
@@ -44,10 +46,19 @@ export function createAdminRouter(
     const { challengeId } = challengeParamsSchema.parse(request.params);
     const challenge = await challengeService.remove(challengeId);
     response.json({
-      message: "Desafio removido do catalogo.",
+      message: "Desafio removido do catálogo.",
       challenge
     });
   });
+
+  if (toolsService) {
+    router.post("/challenges/validate", async (request, response) => {
+      response.json(await toolsService.validate(request.body));
+    });
+    router.post("/challenges/generate-cases", async (request, response) => {
+      response.json(await toolsService.generateCases(request.body));
+    });
+  }
 
   router.get("/statistics", async (_request, response) => {
     response.json(await statisticsService.get());

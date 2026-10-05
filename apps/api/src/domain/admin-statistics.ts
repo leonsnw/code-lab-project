@@ -42,7 +42,15 @@ export interface ChallengePerformanceStatistics {
   totalComments: number;
   totalRatings: number;
   averageRating: number;
+  /** Onde os estudantes erram: quantidade de envios por veredito de erro. */
+  failures: FailureBreakdown;
+  /** Veredito de erro mais frequente (null se ninguém errou). */
+  mainFailure: FailureStatus | null;
 }
+
+export type FailureStatus = "wrong_answer" | "runtime_error" | "timeout" | "compile_error" | "rule_violation";
+export type FailureBreakdown = Record<FailureStatus, number>;
+const FAILURE_STATUSES: FailureStatus[] = ["wrong_answer", "runtime_error", "timeout", "compile_error", "rule_violation"];
 
 export interface DifficultyPerformanceStatistics {
   difficulty: Difficulty;
@@ -99,6 +107,7 @@ export interface AdminStatistics {
 }
 
 interface ChallengeAccumulator {
+  failures: FailureBreakdown;
   totalSubmissions: number;
   acceptedSubmissions: number;
   participants: Set<string>;
@@ -122,7 +131,10 @@ export function buildAdminStatistics(
     accepted: 0,
     wrong_answer: 0,
     runtime_error: 0,
-    timeout: 0
+    timeout: 0,
+    compile_error: 0,
+    rule_violation: 0,
+    internal_error: 0
   };
   const byChallenge = new Map<string, ChallengeAccumulator>();
   const challengeById = new Map(
@@ -143,6 +155,8 @@ export function buildAdminStatistics(
 
   for (const submission of data.submissions) {
     submissionStatuses[submission.status] += 1;
+    // Sandbox failures say nothing about the challenge or the student.
+    if (submission.status === "internal_error") continue;
     const accumulator = byChallenge.get(submission.challengeId);
     const challenge = challengeById.get(submission.challengeId);
     const difficultyAccumulator = challenge
@@ -155,6 +169,9 @@ export function buildAdminStatistics(
     difficultyAccumulator.totalSubmissions += 1;
     difficultyAccumulator.participants.add(submission.userId);
     if (userAccumulator) userAccumulator.totalSubmissions += 1;
+    if ((FAILURE_STATUSES as string[]).includes(submission.status)) {
+      accumulator.failures[submission.status as FailureStatus] += 1;
+    }
     if (submission.status === "accepted") {
       accumulator.acceptedSubmissions += 1;
       accumulator.solvers.add(submission.userId);
@@ -205,7 +222,12 @@ export function buildAdminStatistics(
         solvers: metrics.solvers.size,
         totalComments: metrics.totalComments,
         totalRatings: metrics.totalRatings,
-        averageRating: average(metrics.ratingSum, metrics.totalRatings)
+        averageRating: average(metrics.ratingSum, metrics.totalRatings),
+        failures: metrics.failures,
+        mainFailure: FAILURE_STATUSES.reduce<FailureStatus | null>(
+          (best, status) => (metrics.failures[status] > 0 && (!best || metrics.failures[status] > metrics.failures[best]) ? status : best),
+          null
+        )
       };
     })
     .sort(
@@ -277,6 +299,7 @@ export function buildAdminStatistics(
 
 function createChallengeAccumulator(): ChallengeAccumulator {
   return {
+    failures: { wrong_answer: 0, runtime_error: 0, timeout: 0, compile_error: 0, rule_violation: 0 },
     totalSubmissions: 0,
     acceptedSubmissions: 0,
     participants: new Set(),

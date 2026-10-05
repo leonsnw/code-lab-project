@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { InMemoryStore } from "./database/in-memory-store.js";
 import type { Submission } from "./domain/types.js";
 import { createApp } from "./server.js";
+import { buildSeedData } from "./database/seed.js";
+
+const CATALOG_SIZE = buildSeedData().challenges.length;
 
 function makeApp(store = new InMemoryStore()) {
   return createApp(store, {
@@ -42,13 +45,13 @@ describe("API de estatisticas administrativas", () => {
       totalUsers: 2,
       totalStudents: 1,
       totalAdmins: 1,
-      totalChallenges: 3,
-      activeChallenges: 3,
+      totalChallenges: CATALOG_SIZE,
+      activeChallenges: CATALOG_SIZE,
       inactiveChallenges: 0,
       totalSubmissions: 0,
       acceptanceRate: 0
     });
-    expect(response.body.challenges).toHaveLength(3);
+    expect(response.body.challenges).toHaveLength(CATALOG_SIZE);
     expect(response.body.difficulties).toHaveLength(3);
     expect(response.body.users).toHaveLength(2);
     expect(response.body.highlights).toEqual({
@@ -69,9 +72,14 @@ describe("API de estatisticas administrativas", () => {
       scoreAwarded: 0,
       submittedAt: new Date(),
       evaluatedAt: new Date(),
+      totalTests: 1,
+      passedTests: 0,
+      errorMessage: null,
+      compileWarnings: null,
       testResults: [
         {
           testCaseId: "CASO-PRIVADO-SENSIVEL",
+          position: 1,
           executionStatus: "completed",
           isPublic: false,
           passed: false,

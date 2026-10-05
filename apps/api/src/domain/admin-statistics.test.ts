@@ -70,7 +70,10 @@ describe("buildAdminStatistics", () => {
       accepted: 2,
       wrong_answer: 1,
       runtime_error: 0,
-      timeout: 0
+      timeout: 0,
+      compile_error: 0,
+      rule_violation: 0,
+      internal_error: 0
     });
   });
 
@@ -91,7 +94,9 @@ describe("buildAdminStatistics", () => {
       solvers: 1,
       totalComments: 2,
       totalRatings: 2,
-      averageRating: 4.5
+      averageRating: 4.5,
+      failures: { wrong_answer: 1, runtime_error: 0, timeout: 0, compile_error: 0, rule_violation: 0 },
+      mainFailure: "wrong_answer"
     });
   });
 
