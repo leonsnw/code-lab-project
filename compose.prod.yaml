@@ -1,0 +1,60 @@
+# Produção: docker compose -f compose.prod.yaml --env-file .env.production up -d --build
+# Primeira vez (catálogo): docker compose -f compose.prod.yaml run --rm api npm run db:seed
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codelab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-codelab}
+    volumes:
+      - codelab_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codelab} -d ${POSTGRES_DB:-codelab}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sem porta publicada: só a API acessa o banco, pela rede interna.
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-codelab}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-codelab}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET com 32+ caracteres}
+      NODE_ENV: production
+      WEB_ORIGIN: ${WEB_ORIGIN:?defina WEB_ORIGIN, ex.: https://codelab.suainstituicao.edu.br}
+      APP_URL: ${APP_URL:-${WEB_ORIGIN}}
+      MAIL_WEBHOOK_URL: ${MAIL_WEBHOOK_URL:-}
+      MAIL_WEBHOOK_TOKEN: ${MAIL_WEBHOOK_TOKEN:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      JUDGE_CONCURRENCY: ${JUDGE_CONCURRENCY:-4}
+      # Sistema de arquivos só leitura: npm e ferramentas escrevem em /tmp.
+      HOME: /tmp
+    ports:
+      - "127.0.0.1:3333:3333"
+    # O juiz usa user namespaces (bwrap/unshare), que o seccomp padrão do
+    # Docker bloqueia. O código dos estudantes continua sob o filtro seccomp
+    # próprio do juiz, sem rede e sem arquivos; o contêiner roda sem nenhuma
+    # capability, sem novos privilégios e com o sistema de arquivos só leitura.
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      # bwrap monta um /proc novo para o sandbox; o Docker mascara /proc por padrão.
+      - systempaths=unconfined
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      # exec: o binário compilado das soluções em C roda a partir de /tmp.
+      - /tmp:size=512m,mode=1777,exec
+    pids_limit: 512
+    mem_limit: 2g
+
+volumes:
+  codelab_prod_data:

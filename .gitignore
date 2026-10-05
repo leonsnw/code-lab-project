@@ -7,6 +7,8 @@ dist/
 build/
 coverage/
 
+desafios/
+
 # Environment files
 .env
 .env.*
@@ -30,3 +32,7 @@ yarn-debug.log*
 
 # Generated Prisma client/cache
 apps/api/node_modules/.prisma/
+scripts/e2e/shots/
+
+# Plano pessoal de commits
+PLANO-DE-COMMITS.md

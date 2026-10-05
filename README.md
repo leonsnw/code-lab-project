@@ -1,252 +1,192 @@
-# CodeLab - Plataforma de Desafios de Programacao
+# Code Lab
 
-Implementacao do CodeLab alinhada ao RFC e ao plano SDD. O nucleo atual cobre autenticacao, catalogo de desafios, avaliacao por casos de teste, pontuacao, historico, ranking, progresso, comentarios, avaliacoes, administracao de desafios e estatisticas de desempenho. A interface permanece propositalmente simples para facilitar testes manuais enquanto o backend e consolidado.
+Plataforma de estudo de programação com correção automática no estilo LeetCode: trilhas com lições, desafios em JavaScript, Python e C, juiz isolado que mostra o primeiro caso que falhou, ranking, turmas para professores e ferramentas para criar desafios.
+
+- **Conteúdo:** 4 trilhas, 34 módulos, 34 lições e 174 desafios (3.403 casos de teste). Cada desafio tem pelo menos 2 casos públicos e 12 ocultos; os que cobram complexidade usam entradas de até 200 mil elementos.
+- **Linguagens:** C em todos os desafios; JavaScript e Python em 147. Dos 174, 146 são no modo função (o aluno implementa só a função, como no LeetCode) e 28 no modo entrada/saída (os exercícios de C da disciplina).
+- **Stack:** Node.js 22+ (TypeScript 5, Express 5, Zod), PostgreSQL 16 com Prisma 6, frontend em HTML, CSS e módulos ES sem etapa de build, Vitest e Supertest. O juiz usa bubblewrap, unshare, prlimit, seccomp, gcc e python3.
+
+## Sumário
+
+- [Estrutura](#estrutura)
+- [Como rodar](#como-rodar)
+- [Trilhas e desafios](#trilhas-e-desafios)
+- [Juiz](#juiz)
+- [Funcionalidades](#funcionalidades)
+- [API](#api)
+- [Testes](#testes)
+- [Produção](#produção)
+- [Documentação](#documentação)
 
 ## Estrutura
 
 ```txt
 code-lab-project/
   apps/
-    api/              # API TypeScript/Express e modulos de dominio
-    web/public/       # Interface HTML/CSS/JS de verificacao
-    worker/           # Worker isolado previsto como evolucao arquitetural
-  docs/               # TDD, seguranca e rastreabilidade do RFC
-  infra/              # Infraestrutura local
-  packages/           # Espaco para contratos e fixtures compartilhados
-  compose.yaml        # PostgreSQL local
+    api/
+      prisma/                    # schema, migrations e seed
+      src/
+        database/catalog/        # trilhas, módulos, lições e desafios (gerados de forma determinística)
+        modules/submissions/     # juiz: sandbox, harness do modo função, comparadores, regras de código
+        modules/…                # auth, conta, turmas, estatísticas, admin, observabilidade
+    web/public/                  # SPA (hash routing, sem build)
+  desafios/<slug>/               # solução correta e tentativas de burla de cada desafio
+  docs/                          # segurança, deploy, TDD e rastreabilidade do RFC
+  compose.yaml                   # PostgreSQL local
+  compose.prod.yaml, Dockerfile  # produção
+  .github/workflows/ci.yml       # CI
 ```
 
-## Funcionalidades consolidadas
+## Como rodar
 
-- cadastro de estudantes com validacao e normalizacao;
-- senha armazenada com bcrypt e custo 10;
-- login por JWT em cookie `HttpOnly`, `SameSite=Strict` e com expiracao;
-- limite de tentativas nas rotas de autenticacao;
-- autenticacao e autorizacao por papel `student` e `admin`;
-- CORS limitado a origens configuradas;
-- catalogo e filtro de desafios por dificuldade;
-- detalhe com enunciado, restricoes, exemplos e casos publicos;
-- submissao persistida inicialmente como `pending`;
-- avaliacao JavaScript contra casos publicos e privados;
-- status `accepted`, `wrong_answer`, `runtime_error` e `timeout`;
-- pontuacao transacional, idempotente e protegida contra concorrencia;
-- historico sem revelar entradas, saidas ou identificadores privados;
-- ranking por pontuacao;
-- perfil com resolvidos, pendentes e progresso por dificuldade;
-- comentarios autenticados, ordenados do mais recente para o mais antigo;
-- avaliacao inteira de 1 a 5 por usuario e desafio;
-- atualizacao do voto anterior e calculo de media e total de avaliacoes;
-- cadastro e edicao administrativa de desafios, tags e casos de teste;
-- remocao logica de desafios, preservando submissoes e pontuacoes;
-- bloqueio das rotas administrativas por autenticacao e papel `admin`;
-- painel administrativo com usuarios, desafios e engajamento geral;
-- estatisticas por desafio, dificuldade e usuario;
-- destaques de desafio mais resolvido e maior taxa de erro;
-- migrations Prisma e seed idempotente;
-- testes unitarios, HTTP, seguranca, desempenho e PostgreSQL real.
-
-## Execucao local
-
-Instale as dependencias e suba o PostgreSQL:
-
-Pre-requisitos: Linux com `unshare`, Node.js 22 ou superior e Docker com Compose.
+Pré-requisitos: Linux, Node.js 22 ou superior, Docker com Compose e, para o juiz, `bubblewrap`, `gcc`, `python3` e `util-linux` (`unshare`, `prlimit`).
 
 ```bash
 npm install
 docker compose up -d postgres
-```
-
-Aplique as migrations e garanta os dados de demonstracao:
-
-```bash
 npm run db:migrate:deploy
-npm run db:seed
+npm run db:seed        # catálogo e contas de demonstração (pode rodar mais de uma vez)
+npm run dev            # http://localhost:3333
 ```
 
-O seed pode ser executado mais de uma vez. Ele atualiza as contas e desafios de demonstracao sem apagar usuarios cadastrados, pontuacoes ou submissoes existentes.
+O seed atualiza trilhas e desafios sem apagar usuários, submissões ou pontuações.
 
-### Linhagem de migrations
-
-A consolidacao RF02-RF09 substituiu a migration `20260805150000_authentication`, que cobria apenas autenticacao, pela migration unica `20260804200000_initial`, que cria todo o esquema do dominio. Bancos criados a partir da branch `teste` possuem uma linhagem incompativel com a atual.
-
-Se `npm run db:migrate:status` acusar divergencia, recrie o banco local antes de aplicar as migrations:
-
-```bash
-npm run db:migrate:deploy   # banco vazio: aplica a migration unica
-# ou, em banco ja migrado pela linhagem antiga:
-npx prisma migrate reset --schema apps/api/prisma/schema.prisma
-```
-
-O reset apaga os dados locais. Como o banco de desenvolvimento e recriado pelo seed, isso afeta apenas ambientes locais.
-
-Inicie o servidor:
-
-```bash
-npm run dev
-```
-
-A interface fica disponivel em:
-
-```txt
-http://localhost:3333
-```
-
-## Contas de demonstracao
+### Contas de demonstração
 
 | Papel | E-mail | Senha |
 |---|---|---|
 | Estudante | `marina@codelab.local` | `123456` |
-| Administrador | `admin@codelab.local` | `admin123` |
+| Administrador (professor) | `admin@codelab.local` | `admin123` |
 
-Novos cadastros recebem sempre o papel `student`. O cliente nao pode escolher ou alterar seu proprio papel.
+Novos cadastros são sempre estudantes.
 
-## Variaveis de ambiente
+### Variáveis de ambiente
 
-```env
-DATABASE_URL="postgresql://codelab:codelab@localhost:5432/codelab?schema=public"
-PORT=3333
-JWT_SECRET="uma-chave-com-pelo-menos-32-caracteres"
-NODE_ENV="development"
-WEB_ORIGIN="http://localhost:3333"
-```
+| Variável | Uso |
+|---|---|
+| `DATABASE_URL` | PostgreSQL |
+| `PORT` | porta HTTP (padrão 3333) |
+| `JWT_SECRET` | obrigatório em produção, com 32+ caracteres |
+| `NODE_ENV` | `development`, `test` ou `production` |
+| `WEB_ORIGIN` | origens aceitas pelo CORS |
+| `APP_URL` | endereço público usado nos links dos e-mails |
+| `MAIL_WEBHOOK_URL`, `MAIL_WEBHOOK_TOKEN` | entrega de e-mails (POST JSON `{to, subject, text}`); sem eles, os e-mails vão para o log |
+| `METRICS_TOKEN` | protege `GET /metrics` (em produção, sem token a rota não existe) |
+| `JUDGE_CONCURRENCY` | avaliações simultâneas (padrão: metade dos núcleos) |
+| `LOG_REQUESTS=0` | desliga o log JSON por requisição |
+| `CODELAB_CATALOG_CACHE=0` | desliga o cache em disco do catálogo |
 
-Em `production`, a API nao inicia sem `JWT_SECRET`. O segredo local embutido so e aceito em desenvolvimento e testes.
+## Trilhas e desafios
 
-## Banco de dados
+| Trilha | Módulos | Desafios |
+|---|---|---|
+| Fundamentos de Programação | entrada e saída, condicionais, laços, funções, vetores, matrizes, strings | 43 |
+| Estrutura de Dados (em C) | recursividade, complexidade, busca, ordenação, ponteiros, listas estáticas e encadeadas, pilhas, filas, hash, árvores, heaps, grafos | 73 |
+| Algoritmos e Padrões | dois ponteiros, janela deslizante, prefixo, guloso, backtracking, programação dinâmica, bits | 35 |
+| Preparação para Entrevistas | vetores e hash, strings e janelas, pilhas e intervalos, listas, árvores, grafos, PD e design (LRU, mediana em fluxo) | 23 |
 
-O PostgreSQL persiste usuarios, desafios, tags, casos de teste, submissoes, resultados, pontuacoes, comentarios e avaliacoes.
+Cada módulo tem uma lição curta, desafios em dificuldade crescente e um desafio final ("chefe"). Os desafios de entrevista têm 3 dicas progressivas, complexidade esperada, solução comentada e perguntas de acompanhamento. Os 17 exercícios de C vieram do repositório da disciplina ([Exercicios-Estrutura-de-Dados](https://github.com/leonsnw/Exercicios-Estrutura-de-Dados)), adaptados para leitura da entrada padrão.
 
-Arquivos principais:
+Os desafios são definidos em TypeScript (`apps/api/src/database/catalog/`), com casos gerados por PRNG determinístico. Casos enormes usam argumentos gerados (`{"$gen": "ints", "n": 200000, …}`): o caso guardado fica pequeno e o juiz expande a entrada na hora de executar. O catálogo montado fica em cache em `node_modules/.cache/codelab/`, com a chave tirada do conteúdo das fontes.
 
-```txt
-apps/api/prisma/schema.prisma
-apps/api/prisma/migrations/
-apps/api/prisma/seed.ts
-```
+### Pasta `desafios/`
 
-Comandos:
+Cada desafio tem uma pasta com `solucao.js`, `solucao.py` e `solucao.c` (conforme as linguagens aceitas) e pelo menos uma `burla.*`: uma tentativa de enganar o juiz, como decorar os exemplos, usar um algoritmo ingênuo lento demais ou um atalho proibido. A primeira linha de cada arquivo anuncia o veredito esperado. `apps/api/src/desafios-exemplo.test.ts` roda os 684 arquivos pelo juiz. Ele confere que toda solução é aceita, que toda burla recebe o veredito anunciado e que as burlas de resposta errada passam nos exemplos públicos.
 
-```bash
-npm run db:migrate           # cria/aplica migrations durante desenvolvimento
-npm run db:migrate:deploy    # aplica migrations versionadas
-npm run db:migrate:status    # verifica o estado do banco
-npm run db:seed              # garante dados de demonstracao
-npm run db:studio            # abre o Prisma Studio
-```
+### Lint de conteúdo
 
-`db:push` permanece disponivel apenas como ferramenta auxiliar. O fluxo reproduzivel do projeto usa migrations.
+`catalog-lint.test.ts` exige de todo desafio: enunciado, restrições, dicas, solução comentada, número mínimo de casos, saídas abaixo de 48 KB e português com acentos. Exige de todo módulo: lição, posições contínuas e um único chefe no fim.
 
-## Avaliacao de codigo
+## Juiz
 
-Cada submissao e registrada antes da execucao. O avaliador executa cada caso em um processo Node separado com:
+- **Modos:**
+  - **Entrada/saída:** o programa lê stdin e imprime.
+  - **Função:** o harness chama a função do aluno com os argumentos do caso e compara o valor retornado.
+- **Tipos no modo função:** `int`, `long`, `double`, `bool`, `string`, vetores, matriz, `ListNode` (lista, inclusive com ciclo) e `TreeNode` (árvore em ordem de níveis). Em C, a convenção é a do LeetCode (`int* nums, int numsSize, int* returnSize`).
+- **Comparadores:** saída exata, tolerância numérica, linhas ou valores em qualquer ordem e verificador personalizado.
+- **Veredito:**
+  - Os exemplos rodam primeiro e a avaliação para no primeiro caso que falha.
+  - A resposta mostra entrada, esperado e obtido desse caso, mesmo que seja oculto.
+  - Os erros vêm traduzidos: linha do erro de compilação, UBSan, segfault e recursão sem caso base.
+  - "Executar" roda só os exemplos e não conta tentativa.
+- **Regras de código:** proibir ou exigir construções (sem ordenação pronta, `malloc` obrigatório, recursão). Comentários e textos entre aspas não contam. Em C, a profundidade real da recursão é medida durante a execução.
+- **Isolamento:**
+  - JavaScript roda com `unshare` e `node --permission`.
+  - C e Python rodam em `bwrap` sem rede, com `/usr` só leitura, `/tmp` próprio e ambiente limpo, mais `prlimit` e um filtro seccomp.
+  - Há limites de tempo, memória e saída, e uma fila global (`JUDGE_CONCURRENCY`).
 
-- sistema de permissoes do Node habilitado;
-- namespace de usuario e rede isolado com `unshare`;
-- ambiente sem `DATABASE_URL`, `JWT_SECRET` ou outras variaveis da API;
-- leitura restrita ao arquivo temporario da propria submissao;
-- criacao de processos e acesso de rede bloqueados;
-- limite de 64 MB de memoria;
-- limite de 64 KB para stdout e stderr;
-- timeout de 1,5 segundo por caso;
-- limpeza do diretorio temporario ao terminar.
+Detalhes, ameaças e riscos residuais em [docs/seguranca-avaliacao.md](docs/seguranca-avaliacao.md).
 
-Casos privados sao usados no calculo, mas nao sao retornados individualmente pela API. A resposta apresenta um feedback agregado informando se existem casos ocultos e se algum falhou. Entrada, saida esperada, saida recebida, erro e identificador privado nao saem da API. Casos publicos exibem detalhes suficientes para comparar a saida recebida com a esperada.
+## Funcionalidades
 
-Cada usuario pode enviar no maximo 20 submissões a cada cinco minutos. O catalogo administrativo exige pelo menos um caso publico e um caso oculto por desafio, evitando que uma solucao baseada apenas no exemplo visivel seja aceita.
+- **Estudante:**
+  - trilhas com roteiro e próximo passo sugerido;
+  - editor com realce, fechamento de parênteses, `Ctrl+/`, busca, painéis redimensionáveis e tela cheia;
+  - dicas e solução comentada;
+  - comparação entre duas submissões;
+  - tempo comparado com as outras soluções aceitas;
+  - discussão em Markdown com `||spoiler||`.
+- **Engajamento:** sequência de dias, mapa de atividade, conquistas, ranking por período e por trilha, e perfil público (sem e-mail).
+- **Conta:**
+  - verificação de e-mail e recuperação de senha por link;
+  - edição do nome e troca de senha, que encerra as outras sessões;
+  - exportação dos dados e exclusão da conta (LGPD);
+  - sessão renovada durante o uso.
+- **Professor (admin):**
+  - editor de desafios com rascunho e publicação;
+  - pré-visualização como estudante;
+  - validação de soluções de referência e burlas contra os casos;
+  - gerador de casos que tira o gabarito da solução de referência;
+  - estatísticas com o tipo de erro mais comum por desafio;
+  - turmas com código de acesso, progresso por estudante e exportação CSV.
+- **Interface:**
+  - tema claro e escuro;
+  - busca rápida (`Ctrl+K`) e atalhos (`?`);
+  - esqueletos de carregamento, páginas de erro e onboarding;
+  - termos de uso e política de privacidade.
 
-Um worker em container dedicado ainda e a evolucao recomendada antes de exposicao publica em escala. A implementacao atual atende ao ambiente academico controlado definido no RFC e reduz os principais riscos do processo local.
+## API
 
-## Endpoints atuais
-
-```txt
-GET  /health
-POST /api/auth/register
-POST /api/auth/login
-POST /api/auth/logout                    # autenticado
-GET  /api/me                             # autenticado
-GET  /api/challenges
-GET  /api/challenges/:slug               # autenticado
-POST /api/challenges/:slug/submissions   # autenticado
-GET  /api/challenges/:slug/comments      # autenticado
-POST /api/challenges/:slug/comments      # autenticado
-GET  /api/challenges/:slug/rating        # autenticado
-PUT  /api/challenges/:slug/rating        # autenticado
-GET  /api/submissions                    # autenticado; aceita ?status=accepted|wrong_answer|runtime_error|timeout|pending
-GET  /api/ranking
-GET  /api/admin/challenges               # admin
-GET  /api/admin/challenges/:id           # admin
-POST /api/admin/challenges               # admin
-PUT  /api/admin/challenges/:id           # admin
-DELETE /api/admin/challenges/:id         # admin; remocao logica
-GET  /api/admin/statistics               # admin
-```
-
-Login via cURL, mantendo o cookie de sessao:
-
-```bash
-curl -c /tmp/codelab-cookies.txt \
-  -X POST http://localhost:3333/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"marina@codelab.local","password":"123456"}'
-```
-
-Consulta autenticada:
-
-```bash
-curl -b /tmp/codelab-cookies.txt http://localhost:3333/api/me
-```
-
-Submissao:
-
-```bash
-curl -b /tmp/codelab-cookies.txt \
-  -X POST http://localhost:3333/api/challenges/soma-de-dois-numeros/submissions \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "language": "javascript",
-    "sourceCode": "const fs = require(\"fs\");\nconst [a, b] = fs.readFileSync(0, \"utf8\").trim().split(/\\s+/).map(Number);\nconsole.log(a + b);"
-  }'
-```
-
-A identidade da submissao vem exclusivamente da sessao autenticada. Um `userId` enviado pelo cliente e ignorado.
-
-O historico pode ser filtrado por status. Sem o parametro `status`, todos os
-registros do usuario autenticado sao retornados:
-
-```bash
-curl -b /tmp/codelab-cookies.txt \
-  'http://localhost:3333/api/submissions?status=wrong_answer'
-```
+| Método e rota | Acesso | Descrição |
+|---|---|---|
+| `GET /health` (`?detalhes` inclui o juiz) | público | saúde |
+| `GET /metrics` | token | métricas Prometheus |
+| `POST /api/auth/register`, `/login`, `/logout` | público / sessão | autenticação por cookie HttpOnly |
+| `POST /api/auth/forgot-password`, `/reset-password`, `/verify-email` | público | recuperação de senha e verificação |
+| `GET /api/me`, `PATCH /api/me`, `DELETE /api/me` | sessão | perfil, edição, exclusão |
+| `PUT /api/me/password`, `GET /api/me/export`, `GET /api/me/account`, `POST /api/me/verification` | sessão | senha, exportação LGPD, estado da conta |
+| `GET /api/me/activity` | sessão | sequência, mapa de atividade e conquistas |
+| `GET /api/users/:id/profile` | público | perfil público |
+| `GET /api/tracks`, `/api/tracks/progress`, `/api/lessons/:slug`, `POST /api/lessons/:slug/complete` | público / sessão | trilhas e lições |
+| `GET /api/challenges`, `/api/challenges/:slug` | público / sessão | catálogo e detalhe |
+| `POST /api/challenges/:slug/run`, `/submissions` | sessão | executar e enviar |
+| `POST /api/challenges/:slug/hints`, `/solution` | sessão | dicas e solução comentada |
+| `GET /api/challenges/:slug/runtime` | sessão | distribuição de tempos das aceitas |
+| `GET/POST /api/challenges/:slug/comments`, `GET/PUT …/rating` | sessão | discussão e avaliação |
+| `GET /api/submissions` | sessão | histórico (`?status=`) |
+| `GET /api/ranking?periodo=semana\|mes\|tudo&trilha=` | público | ranking |
+| `POST /api/classes/join`, `GET /api/me/classes`, `DELETE /api/me/classes/:id` | sessão | turmas do estudante |
+| `/api/admin/challenges` (CRUD), `POST …/validate`, `POST …/generate-cases` | admin | desafios e ferramentas |
+| `/api/admin/classes` (CRUD), `GET …/:id/export.csv` | admin | turmas |
+| `GET /api/admin/statistics` | admin | estatísticas |
 
 ## Testes
 
-Suite principal, sem dependencia de banco externo:
-
 ```bash
-npm test
-```
-
-Integracao real com o PostgreSQL local:
-
-```bash
-npm run test:integration
-```
-
-Cobertura:
-
-```bash
+npm test                 # unidade, HTTP, juiz, catálogo e desafios/ (sem banco)
+npm run test:integration # PostgreSQL real (use um banco descartável)
 npm run test:coverage
 ```
 
-Os testes incluem regras de pontuacao, concorrencia, estado `pending`, avaliacao de codigo, sandbox, privacidade dos casos, autenticacao, cookies, autorizacao, CORS, rate limit, filtro por dificuldade, progresso, comentarios, media de avaliacoes, CRUD administrativo, estatisticas e limite de dois segundos do RNF03.
+Sem `bwrap`, `gcc` ou `python3`, os testes que dependem deles são pulados.
 
-## Documentacao de conformidade
+## Produção
 
-- `docs/rfc-matriz-rastreabilidade.md`: requisito, implementacao e evidencia automatizada.
-- `docs/seguranca-avaliacao.md`: controles e riscos residuais da execucao de codigo.
-- `docs/tdd-autenticacao.md`: ciclo Red, Green e Refactor da autenticacao.
-- `docs/tdd-comentarios-avaliacoes.md`: ciclo TDD e regras do RF05.
-- `docs/tdd-administracao-desafios.md`: ciclo TDD, autorizacao e regras do RF06.
-- `docs/tdd-estatisticas-administrativas.md`: metricas, privacidade e evidencias do RF07.
+`Dockerfile` e `compose.prod.yaml` sobem a API (com o juiz) e o PostgreSQL. O contêiner da API roda como usuário sem privilégios, sem capabilities e com sistema de arquivos só leitura. A CI (`.github/workflows/ci.yml`) roda build, testes, migrations do zero com verificação de drift, integração com PostgreSQL e o build da imagem. Passo a passo em [docs/deploy.md](docs/deploy.md).
 
-Os requisitos funcionais mapeados no RFC possuem implementacao no backend. A interface continua intencionalmente provisoria, e o nucleo deve permanecer verde durante o refinamento visual e arquitetural.
+## Documentação
+
+- [docs/deploy.md](docs/deploy.md): implantação, e-mail, métricas e backup.
+- [docs/seguranca-avaliacao.md](docs/seguranca-avaliacao.md): isolamento do juiz, ameaças e riscos residuais.
+- [docs/rfc-matriz-rastreabilidade.md](docs/rfc-matriz-rastreabilidade.md): requisitos do RFC, implementação e testes.
+- `docs/tdd-*.md`: ciclos de TDD de autenticação, comentários, administração e estatísticas.

@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    name: Build e testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Ferramentas do juiz (bubblewrap, gcc, python3)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap gcc python3
+          # Ubuntu 24.04 restringe user namespaces sem privilégio via AppArmor.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - name: Testes (inclui soluções e burlas de desafios/)
+        run: npm test
+        env:
+          JUDGE_CONCURRENCY: 4
+
+  integracao:
+    name: Integração com PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: codelab
+          POSTGRES_PASSWORD: codelab
+          POSTGRES_DB: codelab
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U codelab -d codelab"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://codelab:codelab@localhost:5432/codelab?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Migrations do zero e verificação de drift
+        run: |
+          npm run db:migrate:deploy
+          npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel apps/api/prisma/schema.prisma --exit-code
+      - run: npm run test:integration
+
+  imagem:
+    name: Imagem Docker
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t codelab:ci .
