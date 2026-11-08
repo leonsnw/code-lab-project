@@ -78,7 +78,7 @@ Cada envio revela no máximo um caso oculto. Decorar a suíte sai caro por quatr
 
 - **Suítes grandes:** no mínimo 2 públicos e 12 ocultos por desafio (3.403 casos no total), com bordas e valores gerados deterministicamente.
 - **Casos enormes:** entradas de até 200 mil elementos, impossíveis de decorar e que derrubam a solução ingênua por tempo.
-- **Burlas testadas:** cada desafio tem, em `desafios/<slug>/`, pelo menos uma tentativa de burla que precisa ser reprovada. As de resposta errada passam nos exemplos públicos, então a suíte oculta é que as pega.
+- **Burlas testadas:** cada desafio tem, em `desafios/<trilha>/<modulo>/<slug>/`, pelo menos uma tentativa de burla que precisa ser reprovada. As de resposta errada passam nos exemplos públicos, então a suíte oculta é que as pega.
 - **Limites de envio:** 20 submissões e 60 execuções a cada 5 minutos por usuário.
 
 ## Ferramentas do professor

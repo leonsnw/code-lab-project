@@ -18,7 +18,7 @@ import { moduleId } from "./tracks.js";
  * (github.com/leonsnw/Exercicios-Estrutura-de-Dados). Cada enunciado traz o
  * texto original do comentário e o formato exato de entrada e saída que o juiz
  * exige. Os casos são gerados por implementações de referência; as soluções e
- * as burlas ficam em desafios/<slug>/ e são verificadas pelos testes.
+ * as burlas ficam em desafios/<trilha>/<modulo>/<slug>/ e são verificadas pelos testes.
  */
 
 export const DATA_STRUCTURES_TOPIC = "Estrutura de Dados";

@@ -10,7 +10,7 @@ import { buildCatalog } from "./index.js";
 
 const hasCSandbox =
   spawnSync("bwrap", ["--version"]).status === 0 && spawnSync("gcc", ["--version"]).status === 0;
-// Solucoes corretas ficam em desafios/<slug>/solucao.c, na raiz do repositorio.
+// Solucoes corretas ficam em desafios/<NN-trilha>/<NN-modulo>/<slug>/solucao.c, na raiz do repositorio.
 const examplesDir = join(dirname(fileURLToPath(import.meta.url)), "../../../../../desafios");
 // Os 17 exercicios vindos do repositorio da disciplina (prefixo ed-).
 const legacySlugs = new Set(buildDataStructureChallenges().map((item) => item.slug));
@@ -131,7 +131,7 @@ int main(void){ int n; float v[1000];
   it("recusa lista duplamente encadeada sem ponteiro para o anterior", async () => {
     const result = await judge(
       "lista-duplamente-encadeada",
-      readFileSync(join(examplesDir, "ed-lista-circular", "solucao.c"), "utf8")
+      readFileSync(join(examplesDir, "02-estrutura-de-dados", "07-listas-encadeadas", "ed-lista-circular", "solucao.c"), "utf8")
     );
     expect(result.status).toBe("rule_violation");
     expect(result.errorMessage).toContain("anterior");

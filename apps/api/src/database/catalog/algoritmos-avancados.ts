@@ -6,7 +6,7 @@ import { moduleId } from "./tracks.js";
  * Trilha "Algoritmos e Padrões": módulos de backtracking, programação dinâmica
  * e manipulação de bits. Todos no modo função, em JavaScript, Python e C.
  * Sementes na faixa 700000–799999. Os gabaritos saem das implementações de
- * referência abaixo; as soluções e as burlas ficam em desafios/<slug>/.
+ * referência abaixo; as soluções e as burlas ficam em desafios/<trilha>/<modulo>/<slug>/.
  */
 
 const MOD = 1_000_000_007;

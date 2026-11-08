@@ -21,7 +21,7 @@ import { moduleId } from "./tracks.js";
  * listas encadeadas, pilhas e filas. Os desafios de assunto específico de C
  * (ponteiros, malloc, vetores de tamanho fixo) são só em C, no modo stdio,
  * com regras de código; os demais são no modo função, em JavaScript, Python
- * e C. Soluções e burlas ficam em desafios/<slug>/.
+ * e C. Soluções e burlas ficam em desafios/<trilha>/<modulo>/<slug>/.
  */
 
 const code = (lang: string, source: string) => ["```" + lang, source.trim(), "```"].join("\n");

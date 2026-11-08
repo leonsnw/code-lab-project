@@ -7,9 +7,10 @@ import type { Challenge, SubmissionLanguage } from "./domain/types.js";
 import { buildSeedData } from "./database/seed.js";
 import { SubmissionEvaluationService } from "./modules/submissions/submission-evaluation.service.js";
 
-// Pasta desafios/ na raiz: para cada desafio, uma solucao correta por
-// linguagem aceita e pelo menos uma tentativa de burla, com o veredito
-// esperado na primeira linha de cada arquivo.
+// Pasta desafios/ na raiz, organizada como o catalogo:
+// desafios/<NN-trilha>/<NN-modulo>/<slug>/. Para cada desafio, uma solucao
+// correta por linguagem aceita e pelo menos uma tentativa de burla, com o
+// veredito esperado na primeira linha de cada arquivo.
 const examplesDir = join(dirname(fileURLToPath(import.meta.url)), "../../../desafios");
 const hasBwrap = spawnSync("bwrap", ["--version"]).status === 0;
 const available: Record<SubmissionLanguage, boolean> = {
@@ -21,13 +22,22 @@ const EXTENSIONS: Record<SubmissionLanguage, string> = { javascript: "js", c: "c
 const LANGUAGE_BY_EXTENSION = Object.fromEntries(Object.entries(EXTENSIONS).map(([language, extension]) => [extension, language])) as Record<string, SubmissionLanguage>;
 
 const evaluator = new SubmissionEvaluationService();
-const challenges = buildSeedData().challenges;
+const { challenges, tracks } = buildSeedData();
+
+// Numeracao a partir de 1, na ordem da trilha: 01-fundamentos/01-entrada-saida.
+const numbered = (position: number, slug: string) => `${String(position + 1).padStart(2, "0")}-${slug}`;
+const moduleDirs = new Map(
+  tracks.flatMap((track) => track.modules.map((module) => [module.id, join(numbered(track.position, track.slug), numbered(module.position, module.slug))] as const))
+);
+const dirOf = (challenge: Challenge) => join(moduleDirs.get(challenge.moduleId ?? "") ?? "sem-modulo", challenge.slug);
+const challengeBySlug = new Map(challenges.map((challenge) => [challenge.slug, challenge]));
 
 function filesOf(slug: string, prefix: "solucao" | "burla") {
-  return readdirSync(join(examplesDir, slug))
+  const dir = join(examplesDir, dirOf(challengeBySlug.get(slug)!));
+  return readdirSync(dir)
     .filter((file) => file.startsWith(`${prefix}.`))
     .map((file) => {
-      const source = readFileSync(join(examplesDir, slug, file), "utf8");
+      const source = readFileSync(join(dir, file), "utf8");
       return {
         file,
         language: LANGUAGE_BY_EXTENSION[file.split(".").pop() ?? ""],
@@ -53,9 +63,14 @@ function judge(challenge: Challenge, language: SubmissionLanguage, sourceCode: s
 }
 
 describe("pasta desafios/ com solucao e burla", () => {
-  it("tem uma pasta para cada desafio do catalogo", () => {
+  it("tem uma pasta para cada desafio do catalogo, dentro da trilha e do modulo dele", () => {
     expect(existsSync(examplesDir)).toBe(true);
-    expect(readdirSync(examplesDir).sort()).toEqual(challenges.map((challenge) => challenge.slug).sort());
+    const found = readdirSync(examplesDir).flatMap((track) =>
+      readdirSync(join(examplesDir, track)).flatMap((module) =>
+        readdirSync(join(examplesDir, track, module)).map((slug) => join(track, module, slug))
+      )
+    );
+    expect(found.sort()).toEqual(challenges.map(dirOf).sort());
   });
 
   it("tem solucao para cada linguagem aceita e pelo menos uma burla", () => {
