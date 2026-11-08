@@ -58,7 +58,8 @@ jobs:
       - name: Migrations do zero e verificação de drift
         run: |
           npm run db:migrate:deploy
-          npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel apps/api/prisma/schema.prisma --exit-code
+          # O prisma fica no workspace apps/api (não na raiz): `npx prisma` na raiz não o encontra.
+          npm exec -w apps/api -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: npm run test:integration
 
   imagem:
