@@ -66,6 +66,9 @@ const challengeInclude = {
 };
 
 const CATALOG_TTL_MS = 30_000;
+// Tentativas ao concluir uma submissão quando o PostgreSQL recusa a transação
+// serializável por conflito (P2034), como em dois envios simultâneos da mesma pessoa.
+const MAX_TRANSACTION_ATTEMPTS = 6;
 
 type PrismaChallengeWithRelations = Prisma.ChallengeGetPayload<{
   include: typeof challengeInclude;
@@ -280,7 +283,7 @@ export class PrismaStore implements CodeLabStore {
   async completeSubmission(
     input: CompleteSubmissionInput
   ): Promise<Submission> {
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
       try {
         return await this.prisma.$transaction(
           async (transaction) => {
@@ -348,7 +351,12 @@ export class PrismaStore implements CodeLabStore {
           }
         );
       } catch (error) {
-        if (isTransactionConflict(error) && attempt < 3) {
+        if (isTransactionConflict(error) && attempt < MAX_TRANSACTION_ATTEMPTS) {
+          // Pausa curta e aleatória: sem ela, duas transações concorrentes
+          // tendem a colidir de novo, na mesma hora, em todas as tentativas.
+          await new Promise((resolve) =>
+            setTimeout(resolve, 15 * attempt + Math.random() * 25)
+          );
           continue;
         }
         throw error;
