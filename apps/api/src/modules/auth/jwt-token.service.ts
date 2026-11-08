@@ -13,8 +13,8 @@ export class JwtTokenService implements TokenService {
     }
   }
 
-  issue(user: User): string {
-    return jwt.sign({ type: "access" }, this.secret, {
+  issue(user: User, options: { passwordVersion?: string } = {}): string {
+    return jwt.sign({ type: "access", ...(options.passwordVersion ? { pwv: options.passwordVersion } : {}) }, this.secret, {
       subject: user.id,
       expiresIn: "8h",
       issuer: TOKEN_ISSUER,
@@ -28,12 +28,21 @@ export class JwtTokenService implements TokenService {
         issuer: TOKEN_ISSUER,
         audience: TOKEN_AUDIENCE
       }) as JwtPayload;
+
       if (payload.type !== "access" || typeof payload.sub !== "string") {
-        throw new Error("Token invalido.");
+        throw new Error("Token sem identidade válida.");
       }
-      return { userId: payload.sub };
+
+      return {
+        userId: payload.sub,
+        issuedAt: payload.iat,
+        passwordVersion: typeof payload.pwv === "string" ? payload.pwv : undefined
+      };
     } catch {
-      throw new DomainError("Sessao invalida ou expirada. Entre novamente.", 401);
+      throw new DomainError(
+        "Sessão inválida ou expirada. Entre novamente.",
+        401
+      );
     }
   }
 }

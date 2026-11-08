@@ -7,9 +7,13 @@ export interface PasswordHasher {
 
 export interface AuthTokenPayload {
   userId: string;
+  /** Emissão do token (segundos desde a época), para renovar a sessão. */
+  issuedAt?: number;
+  /** Impressão da senha no momento do login (veja password-version.ts). */
+  passwordVersion?: string;
 }
 
 export interface TokenService {
-  issue(user: User): string;
+  issue(user: User, options?: { passwordVersion?: string }): string;
   verify(token: string): AuthTokenPayload;
 }

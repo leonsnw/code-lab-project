@@ -3,80 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CodeLab - Autenticacao</title>
+    <meta name="description" content="CodeLab: plataforma de desafios de programação com correção automática." />
+    <title>CodeLab</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23171717'/%3E%3Cpath d='m12 11-5 5 5 5M20 11l5 5-5 5' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
     <link rel="stylesheet" href="/styles.css" />
+    <script src="/js/theme-boot.js"></script>
   </head>
   <body>
-    <header>
-      <h1>CodeLab</h1>
-      <p>Primeira entrega: cadastro, login e sessao persistida.</p>
-    </header>
+    <a class="skip-link" href="#app">Pular para o conteúdo</a>
 
-    <main>
-      <section id="auth-section">
-        <h2>Acesso</h2>
-        <p id="auth-message" class="message">Entre ou crie uma conta de estudante.</p>
+    <div class="shell">
+      <aside id="sidebar" class="sidebar" aria-label="Navegação"></aside>
+      <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
 
-        <div class="forms">
-          <form id="login-form">
-            <fieldset>
-              <legend>Entrar</legend>
-              <label for="login-email">E-mail</label>
-              <input id="login-email" name="email" type="email" autocomplete="email" required />
+      <div class="main-col">
+        <header id="topbar" class="topbar"></header>
+        <main id="app" class="page" tabindex="-1">
+          <div class="loading-block">Carregando…</div>
+        </main>
+        <footer class="site-footer" id="site-footer">
+          <span>CodeLab · plataforma de estudo de programação</span>
+          <nav aria-label="Rodapé">
+            <a href="#/trilhas">Trilhas</a>
+            <a href="#/desafios">Desafios</a>
+            <a href="#/termos">Termos de uso</a>
+            <a href="#/privacidade">Privacidade</a>
+            <button type="button" class="link-button" data-open-shortcuts>Atalhos de teclado (?)</button>
+          </nav>
+        </footer>
+      </div>
+    </div>
 
-              <label for="login-password">Senha</label>
-              <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="72" required />
+    <!-- Embaixo e ao centro: não cobre a barra do editor nem os botões Executar/Enviar. Faixa cheia no celular. -->
+    <div id="toasts" class="toasts tw:top-auto tw:right-auto tw:bottom-4 tw:left-1/2 tw:-translate-x-1/2 tw:max-sm:right-4 tw:max-sm:left-4 tw:max-sm:max-w-none tw:max-sm:translate-x-0" role="status" aria-live="polite"></div>
+    <div id="overlay-root"></div>
 
-              <button type="submit">Entrar</button>
-            </fieldset>
-          </form>
-
-          <form id="register-form">
-            <fieldset>
-              <legend>Criar conta</legend>
-              <label for="register-name">Nome</label>
-              <input id="register-name" name="name" type="text" autocomplete="name" maxlength="100" required />
-
-              <label for="register-email">E-mail</label>
-              <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required />
-
-              <label for="register-password">Senha</label>
-              <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
-
-              <label for="register-confirmation">Confirmar senha</label>
-              <input id="register-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
-
-              <button type="submit">Criar conta</button>
-            </fieldset>
-          </form>
-        </div>
-
-        <details>
-          <summary>Contas de demonstracao</summary>
-          <table>
-            <thead><tr><th>Papel</th><th>E-mail</th><th>Senha</th></tr></thead>
-            <tbody>
-              <tr><td>Estudante</td><td>marina@codelab.local</td><td>123456</td></tr>
-              <tr><td>Administrador</td><td>admin@codelab.local</td><td>admin123</td></tr>
-            </tbody>
-          </table>
-        </details>
-      </section>
-
-      <section id="session-section" hidden>
-        <h2>Sessao autenticada</h2>
-        <table>
-          <tbody>
-            <tr><th>ID</th><td id="user-id"></td></tr>
-            <tr><th>Nome</th><td id="user-name"></td></tr>
-            <tr><th>E-mail</th><td id="user-email"></td></tr>
-            <tr><th>Papel</th><td id="user-role"></td></tr>
-          </tbody>
-        </table>
-        <button id="logout-button" type="button">Sair</button>
-      </section>
-    </main>
-
-    <script src="/client.js"></script>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>

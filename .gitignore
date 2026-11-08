@@ -1,11 +1,44 @@
+# Dependencies
 node_modules/
+
+# Build outputs
+.next/
 dist/
+build/
 coverage/
+
+desafios/
+
+# Environment files
 .env
 .env.*
 !.env.example
+
+# Logs
 *.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS/editor
 .DS_Store
 .idea/
 .vscode/
+
+# Database/local artifacts
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated Prisma client/cache
 apps/api/node_modules/.prisma/
+scripts/e2e/shots/
+
+# CSS gerado pelo Tailwind (fonte: apps/web/styles/)
+apps/web/public/styles.css
+
+# Plano pessoal de commits
+PLANO-DE-COMMITS.md
+
+# Prompt usado para guiar a IA (não versionar)
+docs/prompt-produto-final.md
