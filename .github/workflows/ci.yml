@@ -60,6 +60,8 @@ jobs:
           npm run db:migrate:deploy
           # O prisma fica no workspace apps/api (não na raiz): `npx prisma` na raiz não o encontra.
           npm exec -w apps/api -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: Catálogo (os testes de integração partem do banco semeado)
+        run: npm run db:seed
       - run: npm run test:integration
 
   imagem:
