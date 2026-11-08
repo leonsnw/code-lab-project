@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -12,6 +12,8 @@ const hasCSandbox =
   spawnSync("bwrap", ["--version"]).status === 0 && spawnSync("gcc", ["--version"]).status === 0;
 // Solucoes corretas ficam em desafios/<NN-trilha>/<NN-modulo>/<slug>/solucao.c, na raiz do repositorio.
 const examplesDir = join(dirname(fileURLToPath(import.meta.url)), "../../../../../desafios");
+// desafios/ nao e versionada: sem ela (clone novo, CI) o teste que le a solucao e pulado.
+const circularListSolution = join(examplesDir, "02-estrutura-de-dados", "07-listas-encadeadas", "ed-lista-circular", "solucao.c");
 // Os 17 exercicios vindos do repositorio da disciplina (prefixo ed-).
 const legacySlugs = new Set(buildDataStructureChallenges().map((item) => item.slug));
 const challenges = buildCatalog().challenges.filter((item) => legacySlugs.has(item.slug));
@@ -128,11 +130,8 @@ int main(void){ int n; float v[1000];
     expect(result.status).toBe("rule_violation");
   });
 
-  it("recusa lista duplamente encadeada sem ponteiro para o anterior", async () => {
-    const result = await judge(
-      "lista-duplamente-encadeada",
-      readFileSync(join(examplesDir, "02-estrutura-de-dados", "07-listas-encadeadas", "ed-lista-circular", "solucao.c"), "utf8")
-    );
+  it.skipIf(!existsSync(circularListSolution))("recusa lista duplamente encadeada sem ponteiro para o anterior", async () => {
+    const result = await judge("lista-duplamente-encadeada", readFileSync(circularListSolution, "utf8"));
     expect(result.status).toBe("rule_violation");
     expect(result.errorMessage).toContain("anterior");
   });

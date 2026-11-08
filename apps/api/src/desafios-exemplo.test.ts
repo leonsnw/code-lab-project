@@ -12,6 +12,9 @@ import { SubmissionEvaluationService } from "./modules/submissions/submission-ev
 // correta por linguagem aceita e pelo menos uma tentativa de burla, com o
 // veredito esperado na primeira linha de cada arquivo.
 const examplesDir = join(dirname(fileURLToPath(import.meta.url)), "../../../desafios");
+// A pasta nao e versionada (guarda as solucoes de referencia): sem ela, como num
+// clone novo ou no CI, estes testes sao pulados em vez de falhar.
+const hasExamples = existsSync(examplesDir);
 const hasBwrap = spawnSync("bwrap", ["--version"]).status === 0;
 const available: Record<SubmissionLanguage, boolean> = {
   javascript: true,
@@ -62,9 +65,8 @@ function judge(challenge: Challenge, language: SubmissionLanguage, sourceCode: s
   });
 }
 
-describe("pasta desafios/ com solucao e burla", () => {
+describe.skipIf(!hasExamples)("pasta desafios/ com solucao e burla", () => {
   it("tem uma pasta para cada desafio do catalogo, dentro da trilha e do modulo dele", () => {
-    expect(existsSync(examplesDir)).toBe(true);
     const found = readdirSync(examplesDir).flatMap((track) =>
       readdirSync(join(examplesDir, track)).flatMap((module) =>
         readdirSync(join(examplesDir, track, module)).map((slug) => join(track, module, slug))
