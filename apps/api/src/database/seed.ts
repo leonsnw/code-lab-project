@@ -66,7 +66,7 @@ export function buildSeedData(): {
   const users: UserCredentials[] = [
     {
       id: studentId,
-      name: "Marina Silva",
+      name: "Leonardo",
       email: "marina@codelab.local",
       role: "student",
       passwordHash: "$2b$10$fH3DkQnuSlijgJH9aknS6.aP8l5.uolrmIvkHdjFk.55mx7l9Puri"

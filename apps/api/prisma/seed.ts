@@ -13,7 +13,7 @@ async function main() {
   ]);
 
   const accounts = [
-    { id: "user-marina", name: "Marina Silva", email: "marina@codelab.local", passwordHash: studentPasswordHash, role: "STUDENT" as const },
+    { id: "user-marina", name: "Leonardo", email: "marina@codelab.local", passwordHash: studentPasswordHash, role: "STUDENT" as const },
     { id: "user-admin", name: "Professor Henrique", email: "admin@codelab.local", passwordHash: adminPasswordHash, role: "ADMIN" as const }
   ];
   for (const account of accounts) {
