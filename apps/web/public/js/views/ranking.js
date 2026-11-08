@@ -66,7 +66,7 @@ export async function render({ root, session }) {
     paint(
       $("#my-position", root),
       me
-        ? html`<div class="stat" style="min-width: 220px"><span>Sua posição</span><strong>${position >= 0 ? `#${position + 1}` : "—"}</strong><small>${position >= 0 ? `${formatNumber(ranking[position].totalPoints)} pontos` : "ainda sem pontos neste filtro"}</small></div>`
+        ? html`<div class="stat tw:min-w-55"><span>Sua posição</span><strong>${position >= 0 ? `#${position + 1}` : "—"}</strong><small>${position >= 0 ? `${formatNumber(ranking[position].totalPoints)} pontos` : "ainda sem pontos neste filtro"}</small></div>`
         : ""
     );
     paint(
@@ -75,7 +75,7 @@ export async function render({ root, session }) {
         ? emptyState(filter.period === "tudo" && !filter.track ? "Nenhum estudante pontuou ainda." : "Ninguém pontuou com esses filtros. Que tal ser o primeiro?")
         : html`<div class="table-wrap">
             <table>
-              <thead><tr><th class="num" style="width: 64px">#</th><th>Estudante</th><th class="num">Resolvidos</th><th class="num">Pontos</th></tr></thead>
+              <thead><tr><th class="num tw:w-16">#</th><th>Estudante</th><th class="num">Resolvidos</th><th class="num">Pontos</th></tr></thead>
               <tbody>
                 ${ranking.map(
                   (entry, index) => html`

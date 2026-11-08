@@ -34,21 +34,21 @@ export async function render({ root, query }) {
         <div class="stack">
           <section class="card">
             <div class="card-head">
-              <div style="display: flex; gap: 14px; align-items: center">
+              <div class="tw:flex tw:gap-3.5 tw:items-center">
                 <span class="avatar avatar-lg">${initials(user.name)}</span>
                 <div>
-                  <h1 style="font-size: 20px">${user.name}</h1>
-                  <p class="muted" style="margin: 0">${user.email}</p>
+                  <h1 class="tw:text-[20px]">${user.name}</h1>
+                  <p class="muted tw:m-0">${user.email}</p>
                 </div>
               </div>
             </div>
-            <div class="stat-grid" style="margin: 0">
+            <div class="stat-grid tw:m-0">
               <div class="stat"><span>Pontos</span><strong>${formatNumber(score.totalPoints)}</strong></div>
               <div class="stat"><span>Resolvidos</span><strong>${progress.solvedChallenges}</strong></div>
               <div class="stat"><span>Pendentes</span><strong>${progress.pendingChallenges}</strong></div>
               ${activity ? streakStat(activity) : html`<div class="stat"><span>Catálogo</span><strong>${progress.totalChallenges}</strong></div>`}
             </div>
-            <p class="muted small" style="margin: 12px 0 0">Seu <a href="#/u/${user.id}">perfil público</a> mostra só o nome e as estatísticas de prática, nunca o e-mail.</p>
+            <p class="muted small tw:mx-0 tw:mt-3 tw:mb-0">Seu <a href="#/u/${user.id}">perfil público</a> mostra só o nome e as estatísticas de prática, nunca o e-mail.</p>
           </section>
 
           ${activity ? html`<section class="card"><h2>Atividade</h2>${heatmap(activity.days)}</section>` : ""}
@@ -84,7 +84,7 @@ export async function render({ root, query }) {
             <h2>Desafios concluídos</h2>
             ${score.solvedChallengeIds.length === 0
               ? html`<p class="muted">Nenhum ainda. <a href="#/desafios">Escolha um desafio</a>.</p>`
-              : html`<ul style="margin: 10px 0 0; padding-left: 18px">
+              : html`<ul class="tw:mx-0 tw:mt-2.5 tw:mb-0 tw:pl-4.5">
                   ${score.solvedChallengeIds.map((id) => {
                     const challenge = catalog.byId.get(id);
                     return challenge ? html`<li><a href="#/desafios/${challenge.slug}">${challenge.title}</a></li>` : "";
@@ -115,13 +115,13 @@ export async function render({ root, query }) {
                   <summary>
                     ${statusPill(submission.status)}
                     <strong>${challenge?.title ?? "Desafio removido"}</strong>
-                    <span class="muted" style="margin-left: auto">${submission.result.passedTests}/${submission.result.totalTests} casos · ${formatDateTime(submission.submittedAt)}${submission.scoreAwarded ? ` · +${submission.scoreAwarded} pts` : ""}</span>
+                    <span class="muted tw:ml-auto">${submission.result.passedTests}/${submission.result.totalTests} casos · ${formatDateTime(submission.submittedAt)}${submission.scoreAwarded ? ` · +${submission.scoreAwarded} pts` : ""}</span>
                   </summary>
                   <div class="history-body">
                     ${renderVerdict(submission)}
-                    <p class="field-label" style="margin: 14px 0 0">Código enviado</p>
+                    <p class="field-label tw:mx-0 tw:mt-3.5 tw:mb-0">Código enviado</p>
                     <pre class="code-view">${raw(highlight(submission.sourceCode, submission.language))}</pre>
-                    ${challenge ? html`<p style="margin: 10px 0 0"><a class="btn btn-sm" href="#/desafios/${challenge.slug}">Abrir desafio</a></p>` : ""}
+                    ${challenge ? html`<p class="tw:mx-0 tw:mt-2.5 tw:mb-0"><a class="btn btn-sm" href="#/desafios/${challenge.slug}">Abrir desafio</a></p>` : ""}
                   </div>
                 </details>
               `;

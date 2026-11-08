@@ -12,11 +12,11 @@ export async function render({ root, params, session }) {
     html`
       <nav class="breadcrumb" aria-label="Trilha"><a href="#/ranking">Ranking</a><span>›</span><span>${profile.user.name}</span></nav>
       <div class="page-head">
-        <div style="display: flex; gap: 14px; align-items: center">
+        <div class="tw:flex tw:gap-3.5 tw:items-center">
           <span class="avatar avatar-lg">${initials(profile.user.name)}</span>
           <div>
             <h1>${profile.user.name}</h1>
-            <p class="lead" style="margin: 0">${profile.rankingPosition ? `#${profile.rankingPosition} no ranking geral` : "Ainda fora do ranking"}${isMe ? " · este é o seu perfil público" : ""}</p>
+            <p class="lead tw:m-0">${profile.rankingPosition ? `#${profile.rankingPosition} no ranking geral` : "Ainda fora do ranking"}${isMe ? " · este é o seu perfil público" : ""}</p>
           </div>
         </div>
         ${isMe ? html`<a class="btn" href="#/perfil">Editar perfil</a>` : ""}
@@ -29,7 +29,7 @@ export async function render({ root, params, session }) {
         <div class="stat"><span>Dias com prática</span><strong>${profile.activity.activeDays}</strong></div>
       </section>
 
-      <section class="card" style="margin-bottom: 16px">
+      <section class="card tw:mb-4">
         <h2>Atividade</h2>
         ${heatmap(profile.activity.days)}
       </section>

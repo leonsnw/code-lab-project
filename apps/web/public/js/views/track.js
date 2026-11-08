@@ -48,12 +48,12 @@ export async function render({ root, params, session }) {
                   </div>
                   <span class="pill">${stats ? `${stats.done}/${stats.total}` : `${items.length} itens`} · ~${module.estimatedMinutes} min</span>
                 </div>
-                <p class="small" style="margin: -6px 0 12px"><span class="muted">Conceito:</span> ${module.concept}</p>
+                <p class="small tw:mx-0 tw:-mt-1.5 tw:mb-3"><span class="muted">Conceito:</span> ${module.concept}</p>
                 ${session.user && missingPrerequisites.length
                   ? html`<p class="alert alert-warning small">Recomendado fazer antes: ${missingPrerequisites.map((id) => moduleTitles.get(id) ?? id).join(", ")}.</p>`
                   : ""}
                 ${items.length === 0
-                  ? html`<p class="muted small" style="margin: 0">Conteúdo em preparação.</p>`
+                  ? html`<p class="muted small tw:m-0">Conteúdo em preparação.</p>`
                   : html`<ul class="module-items">
                       ${items.map(
                         (item) => html`

@@ -40,7 +40,7 @@ async function renderList({ root }) {
                   <td class="num">${challenge.points}</td>
                   <td class="num" title="${hidden} ocultos">${challenge.testCases.length}${hidden < RECOMMENDED_HIDDEN_CASES ? html` <span class="pill status-timeout" title="Poucos casos ocultos facilitam respostas decoradas">poucos ocultos</span>` : ""}</td>
                   <td>${!challenge.isActive ? html`<span class="pill status-pending">Inativo</span>` : challenge.isPublished === false ? html`<span class="pill status-timeout">Rascunho</span>` : html`<span class="pill status-accepted">Publicado</span>`}</td>
-                  <td class="num"><span class="btn-row" style="justify-content: flex-end">
+                  <td class="num"><span class="btn-row tw:justify-end">
                     <a class="btn btn-sm" href="#/admin/desafios/${challenge.id}">Editar</a>
                     ${challenge.isActive ? html`<button class="btn btn-sm btn-danger" type="button" data-remove="${challenge.id}" data-title="${challenge.title}">Remover</button>` : ""}
                   </span></td>
@@ -160,7 +160,7 @@ async function renderForm({ root, params, mode }) {
         <div id="form-error" class="alert alert-error" role="alert" hidden></div>
 
         <section class="card">
-          <h2 style="margin-bottom: 14px">Enunciado</h2>
+          <h2 class="tw:mb-3.5">Enunciado</h2>
           <div class="form-grid">
             <div class="field"><label for="f-title">Título</label><input id="f-title" name="title" value="${source.title}" minlength="3" maxlength="120" required /></div>
             <div class="field"><label for="f-slug">Slug (URL)</label><input id="f-slug" name="slug" value="${source.slug}" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="120" required /><small>Letras minúsculas, números e hífens.</small></div>
@@ -191,7 +191,7 @@ async function renderForm({ root, params, mode }) {
         </section>
 
         <section class="card">
-          <h2 style="margin-bottom: 14px">Trilha</h2>
+          <h2 class="tw:mb-3.5">Trilha</h2>
           <div class="form-grid">
             <div class="field"><label for="f-module">Módulo</label>
               <select id="f-module" name="moduleId">
@@ -215,7 +215,7 @@ async function renderForm({ root, params, mode }) {
         </section>
 
         <section class="card">
-          <h2 style="margin-bottom: 14px">Linguagens e avaliação</h2>
+          <h2 class="tw:mb-3.5">Linguagens e avaliação</h2>
           <div class="field">
             <span class="field-label">Linguagens aceitas</span>
             <div class="btn-row">
@@ -248,7 +248,7 @@ async function renderForm({ root, params, mode }) {
         </section>
 
         <section class="card">
-          <h2 style="margin-bottom: 14px">Ajuda ao estudante</h2>
+          <h2 class="tw:mb-3.5">Ajuda ao estudante</h2>
           <div class="field"><label for="f-hints">Dicas progressivas (uma por linha, até 5)</label><textarea id="f-hints" name="hints" rows="4">${source.hints.join("\n")}</textarea></div>
           <div class="field"><label for="f-editorial">Solução comentada (Markdown)</label><textarea id="f-editorial" name="editorial" class="mono" rows="8">${source.editorial ?? ""}</textarea><small>Liberada ao resolver ou após 3 tentativas (quem revela antes perde os pontos).</small></div>
           <div class="form-grid">
@@ -265,7 +265,7 @@ async function renderForm({ root, params, mode }) {
               <p>Verificadas antes dos testes, ignorando comentários e strings. Tipos: <code>recursion</code>, <code>forbid</code> e <code>require</code> (com <code>pattern</code> em expressão regular). O estudante vê apenas a mensagem.</p>
             </div>
           </div>
-          <div class="field" style="margin: 0">
+          <div class="field tw:m-0">
             <label for="f-rules">Regras em JSON</label>
             <textarea id="f-rules" name="sourceRules" class="mono" rows="5" spellcheck="false" placeholder="${RULE_EXAMPLE}">${rulesText(source.languages)}</textarea>
             <small>Lista = mesmas regras para todas as linguagens. Para regras por linguagem, use um objeto: <code>{"c": [...], "python": [...]}</code>. Deixe vazio para não aplicar regras.</small>
@@ -285,9 +285,9 @@ async function renderForm({ root, params, mode }) {
           </div>
           <div id="test-cases" class="case-editor"></div>
           <p id="case-summary" class="case-summary"></p>
-          <details style="margin-top: 12px">
+          <details class="tw:mt-3">
             <summary>Importar ou exportar casos em JSON</summary>
-            <div class="field" style="margin-top: 10px">
+            <div class="field tw:mt-2.5">
               <textarea id="cases-json" class="mono" rows="8" spellcheck="false"></textarea>
               <small>Formato: <code>[{"input": "1 2", "expectedOutput": "3", "isPublic": false}]</code></small>
             </div>
@@ -365,7 +365,7 @@ async function renderForm({ root, params, mode }) {
         ? html`<p class="muted small">Sem exemplos.</p>`
         : state.examples.map(
             (example, index) => html`
-              <div class="case-row" style="grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr) auto">
+              <div class="case-row tw:grid-cols-[34px_minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <span class="case-index">${index + 1}</span>
                 <textarea aria-label="Entrada do exemplo ${index + 1}" data-example="${index}" data-field="input" placeholder="Entrada">${example.input}</textarea>
                 <textarea aria-label="Saída do exemplo ${index + 1}" data-example="${index}" data-field="output" placeholder="Saída">${example.output}</textarea>
@@ -585,9 +585,9 @@ async function renderForm({ root, params, mode }) {
           ${result
             ? html`<span>→ ${result.status}${result.totalTests ? ` · ${result.passedTests}/${result.totalTests} casos` : ""}${result.slowestMs !== null && result.slowestMs !== undefined ? ` · caso mais lento ${result.slowestMs} ms` : ""}</span>
                 ${result.failedCase ? html`<span class="muted small">falhou no caso ${result.failedCase.position} (${result.failedCase.isPublic ? "público" : "oculto"})</span>` : ""}
-                ${result.message && !result.ok ? html`<pre class="io is-error" style="width: 100%; margin: 4px 0 0">${result.message.slice(0, 600)}</pre>` : ""}`
+                ${result.message && !result.ok ? html`<pre class="io is-error tw:w-full tw:mx-0 tw:mt-1 tw:mb-0">${result.message.slice(0, 600)}</pre>` : ""}`
             : ""}
-          <button class="btn btn-sm btn-ghost" type="button" data-unqueue="${index}" aria-label="Remover da validação" style="margin-left: auto">✕</button>
+          <button class="btn btn-sm btn-ghost tw:ml-auto" type="button" data-unqueue="${index}" aria-label="Remover da validação">✕</button>
         </div>`;
       })
     );

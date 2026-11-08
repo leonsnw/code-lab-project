@@ -57,13 +57,13 @@ export async function render({ root }) {
       ${history.submissions.length === 0
         ? html`<section class="card onboarding" aria-labelledby="onboarding-title">
             <h2 id="onboarding-title">Por onde começar?</h2>
-            <p class="muted" style="margin: 0 0 12px">Escolha pelo que você já sabe. Dá para trocar de trilha quando quiser; o progresso fica salvo.</p>
+            <p class="muted tw:mx-0 tw:mt-0 tw:mb-3">Escolha pelo que você já sabe. Dá para trocar de trilha quando quiser; o progresso fica salvo.</p>
             <div class="onboarding-options">
               <a class="onboarding-option" href="#/trilhas/fundamentos"><strong>Estou começando</strong><span>Fundamentos: entrada e saída, condicionais, laços, funções, vetores e strings.</span></a>
               <a class="onboarding-option" href="#/trilhas/estrutura-de-dados"><strong>Já programo</strong><span>Estrutura de Dados em C: recursão, ordenação, listas, pilhas, árvores e grafos.</span></a>
               <a class="onboarding-option" href="#/trilhas/entrevistas"><strong>Vou fazer entrevistas</strong><span>Os problemas clássicos, com complexidade cobrada e perguntas de acompanhamento.</span></a>
             </div>
-            <p class="muted small" style="margin: 12px 0 0">Dica: <kbd>Ctrl</kbd> + <kbd>K</kbd> abre a busca rápida em qualquer tela; <kbd>?</kbd> mostra os atalhos.</p>
+            <p class="muted small tw:mx-0 tw:mt-3 tw:mb-0">Dica: <kbd>Ctrl</kbd> + <kbd>K</kbd> abre a busca rápida em qualquer tela; <kbd>?</kbd> mostra os atalhos.</p>
           </section>`
         : ""}
 
@@ -83,8 +83,8 @@ export async function render({ root }) {
               ? html`
                   <div class="card-head">
                     <div>
-                      <p class="muted small" style="margin: 0">Próximo passo · ${nextStep.trackTitle} › ${nextStep.moduleTitle}</p>
-                      <h2 style="margin-top: 4px">${nextStep.type === "lesson" ? "Lição" : "Desafio"}: ${nextStep.title}</h2>
+                      <p class="muted small tw:m-0">Próximo passo · ${nextStep.trackTitle} › ${nextStep.moduleTitle}</p>
+                      <h2 class="tw:mt-1">${nextStep.type === "lesson" ? "Lição" : "Desafio"}: ${nextStep.title}</h2>
                     </div>
                   </div>
                   <div class="btn-row">
@@ -151,7 +151,7 @@ export async function render({ root }) {
                 ${activity.badges.some((badge) => badge.earnedAt)
                   ? badgeList(activity.badges, { onlyEarned: true, limit: 4 })
                   : badgeList(activity.badges, { limit: 3 })}
-                <a class="btn btn-sm" href="#/perfil" style="margin-top: 8px">Ver todas</a>
+                <a class="btn btn-sm tw:mt-2" href="#/perfil">Ver todas</a>
               </section>`
             : ""}
 

@@ -44,8 +44,8 @@ export function render({ root, mode, query }) {
                 <label for="auth-confirmation">Confirmar senha</label>
                 <input id="auth-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
               </div>`}
-          <button class="btn btn-primary" type="submit" style="width: 100%">${isLogin ? "Entrar" : "Criar conta"}</button>
-          ${isLogin ? "" : html`<p class="muted small" style="margin: 10px 0 0">Ao criar a conta, você concorda com os <a href="#/termos">Termos de uso</a> e a <a href="#/privacidade">Política de privacidade</a>.</p>`}
+          <button class="btn btn-primary tw:w-full" type="submit">${isLogin ? "Entrar" : "Criar conta"}</button>
+          ${isLogin ? "" : html`<p class="muted small tw:mx-0 tw:mt-2.5 tw:mb-0">Ao criar a conta, você concorda com os <a href="#/termos">Termos de uso</a> e a <a href="#/privacidade">Política de privacidade</a>.</p>`}
         </form>
         <p class="auth-switch">
           ${isLogin

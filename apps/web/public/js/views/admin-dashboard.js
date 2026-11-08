@@ -50,7 +50,7 @@ export async function render({ root }) {
             </dl>
           </section>
           <section class="card">
-            <div class="btn-row" style="margin-top: 8px">
+            <div class="btn-row tw:mt-2">
               <a class="btn btn-sm" href="#/admin/desafios">Gerenciar desafios</a>
               <a class="btn btn-sm" href="#/admin/estatisticas">Estatísticas detalhadas</a>
             </div>

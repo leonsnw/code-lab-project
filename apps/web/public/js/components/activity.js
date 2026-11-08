@@ -66,7 +66,7 @@ export function badgeList(badges, { onlyEarned = false, limit = Infinity } = {})
   const earned = badges.filter((badge) => badge.earnedAt).length;
   if (!items.length) return html`<p class="muted small">Nenhuma conquista ainda.</p>`;
   return html`
-    <p class="muted small" style="margin: 0 0 10px">${earned} de ${badges.length} conquistas</p>
+    <p class="muted small tw:mx-0 tw:mt-0 tw:mb-2.5">${earned} de ${badges.length} conquistas</p>
     <ul class="badge-list">
       ${items.map(
         (badge) => html`

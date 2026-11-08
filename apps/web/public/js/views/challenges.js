@@ -59,13 +59,13 @@ export async function render({ root, query }) {
             <div class="filters">
               <div class="search-field">${icon("search")}<label class="sr-only" for="catalog-search">Buscar desafio</label><input id="catalog-search" class="input" type="search" placeholder="Buscar por título, descrição ou tag" value="${state.search}" /></div>
               <label class="sr-only" for="catalog-difficulty">Dificuldade</label>
-              <select id="catalog-difficulty" class="input" style="flex: 0 0 150px; width: auto">
+              <select id="catalog-difficulty" class="input tw:flex-[0_0_150px] tw:w-auto">
                 <option value="">Todos os níveis</option>
                 ${Object.entries(DIFFICULTY_LABELS).map(([value, label]) => html`<option value="${value}" ${state.difficulty === value ? html`selected` : ""}>${label}</option>`)}
               </select>
               ${session.user
                 ? html`<label class="sr-only" for="catalog-status">Situação</label>
-                    <select id="catalog-status" class="input" style="flex: 0 0 170px; width: auto">
+                    <select id="catalog-status" class="input tw:flex-[0_0_170px] tw:w-auto">
                       <option value="">Todas as situações</option>
                       <option value="pending">Não resolvidos</option>
                       <option value="solved">Resolvidos</option>
@@ -144,10 +144,10 @@ export async function render({ root, query }) {
       $("#topic-summary", root),
       html`
         <h2>${state.topic || "Todos os assuntos"}</h2>
-        <p class="muted small" style="margin: 4px 0 0">${scoped.length} ${scoped.length === 1 ? "desafio" : "desafios"}${state.language ? ` em ${LANGUAGES.find(([value]) => value === state.language)[1]}` : ""}</p>
+        <p class="muted small tw:mx-0 tw:mt-1 tw:mb-0">${scoped.length} ${scoped.length === 1 ? "desafio" : "desafios"}${state.language ? ` em ${LANGUAGES.find(([value]) => value === state.language)[1]}` : ""}</p>
         ${session.user
           ? bySubtopic.map((item) => meter(item.name, item.solved, item.total))
-          : html`<dl class="kv" style="margin-top: 8px">${bySubtopic.map((item) => html`<div><dt>${item.name}</dt><dd>${item.total}</dd></div>`)}</dl>`}
+          : html`<dl class="kv tw:mt-2">${bySubtopic.map((item) => html`<div><dt>${item.name}</dt><dd>${item.total}</dd></div>`)}</dl>`}
       `
     );
   }

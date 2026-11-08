@@ -38,7 +38,7 @@ export async function render({ root, mode, query }) {
               <label for="recovery-email">E-mail</label>
               <input id="recovery-email" name="email" type="email" autocomplete="email" maxlength="254" required />
             </div>
-            <button class="btn btn-primary" type="submit" style="width: 100%">Enviar link</button>
+            <button class="btn btn-primary tw:w-full" type="submit">Enviar link</button>
           </form>
           <p class="auth-switch"><a href="#/entrar">Voltar para o login</a></p>
         `
@@ -82,7 +82,7 @@ export async function render({ root, mode, query }) {
               <label for="reset-confirmation">Confirmar senha</label>
               <input id="reset-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
             </div>
-            <button class="btn btn-primary" type="submit" style="width: 100%">Salvar nova senha</button>
+            <button class="btn btn-primary tw:w-full" type="submit">Salvar nova senha</button>
           </form>
         `
       )
@@ -111,7 +111,7 @@ export async function render({ root, mode, query }) {
   }
 
   // Verificação de e-mail: confirma assim que a página abre.
-  paint(root, shell("Verificando seu e-mail", "Só um instante…", html`<div class="skeleton skeleton-line" style="width: 60%"></div>`));
+  paint(root, shell("Verificando seu e-mail", "Só um instante…", html`<div class="skeleton skeleton-line tw:w-[60%]"></div>`));
   try {
     await api.verifyEmail(token);
     paint(

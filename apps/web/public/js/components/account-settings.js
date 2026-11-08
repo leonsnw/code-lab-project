@@ -13,10 +13,10 @@ export async function mountAccountSettings(target, user) {
       <section class="card" id="account-card">
         <h2>Conta</h2>
         ${account.emailVerified
-          ? html`<p class="muted small" style="margin: 0 0 12px">E-mail <strong>${user.email}</strong> verificado.</p>`
-          : html`<div class="alert alert-warning" style="margin: 0 0 12px">
+          ? html`<p class="muted small tw:mx-0 tw:mt-0 tw:mb-3">E-mail <strong>${user.email}</strong> verificado.</p>`
+          : html`<div class="alert alert-warning tw:mx-0 tw:mt-0 tw:mb-3">
               E-mail ainda não verificado: sem ele você não consegue recuperar a senha.
-              <button id="resend-verification" class="btn btn-sm" type="button" style="margin-top: 6px">Reenviar link</button>
+              <button id="resend-verification" class="btn btn-sm tw:mt-1.5" type="button">Reenviar link</button>
             </div>`}
         <form id="name-form" class="stack-form">
           <div class="field">
@@ -41,25 +41,25 @@ export async function mountAccountSettings(target, user) {
           ? html`<ul class="class-list">${classes.map(
               (item) => html`<li><span><strong>${item.name}</strong><span class="muted small"> · ${item.ownerName}</span></span><button class="btn btn-sm btn-ghost" type="button" data-leave="${item.id}" data-name="${item.name}">Sair</button></li>`
             )}</ul>`
-          : html`<p class="muted small" style="margin: 0 0 10px">Você não está em nenhuma turma.</p>`}
+          : html`<p class="muted small tw:mx-0 tw:mt-0 tw:mb-2.5">Você não está em nenhuma turma.</p>`}
         <form id="join-form" class="inline-form">
           <label class="sr-only" for="class-code">Código da turma</label>
-          <input id="class-code" name="code" class="input mono" maxlength="6" placeholder="Código (6 caracteres)" autocomplete="off" style="text-transform: uppercase" required />
+          <input id="class-code" name="code" class="input mono tw:uppercase" maxlength="6" placeholder="Código (6 caracteres)" autocomplete="off" required />
           <button class="btn btn-sm" type="submit">Entrar na turma</button>
         </form>
-        <p class="muted small" style="margin: 8px 0 0">O professor da turma vê seu nome, e-mail e progresso.</p>
+        <p class="muted small tw:mx-0 tw:mt-2 tw:mb-0">O professor da turma vê seu nome, e-mail e progresso.</p>
       </section>
 
       <section class="card">
         <h2>Seus dados</h2>
-        <p class="muted small" style="margin: 0 0 10px">Direitos da LGPD: baixe tudo o que guardamos sobre você ou apague a conta. <a href="#/privacidade">Política de privacidade</a>.</p>
+        <p class="muted small tw:mx-0 tw:mt-0 tw:mb-2.5">Direitos da LGPD: baixe tudo o que guardamos sobre você ou apague a conta. <a href="#/privacidade">Política de privacidade</a>.</p>
         <div class="btn-row">
           <button id="export-data" class="btn btn-sm" type="button">Baixar meus dados (JSON)</button>
         </div>
         <details class="settings-details danger-zone">
           <summary>Excluir conta</summary>
           <form id="delete-form" class="stack-form">
-            <p class="small" style="margin: 0">Apaga para sempre a conta, as submissões, os comentários, as avaliações e o progresso. Não dá para desfazer.</p>
+            <p class="small tw:m-0">Apaga para sempre a conta, as submissões, os comentários, as avaliações e o progresso. Não dá para desfazer.</p>
             <div class="field"><label for="delete-password">Confirme com a sua senha</label><input id="delete-password" name="password" type="password" autocomplete="current-password" class="input" required /></div>
             <button class="btn btn-sm btn-danger" type="submit">Excluir minha conta</button>
           </form>

@@ -19,9 +19,9 @@ export async function render({ root, mode, params }) {
           <p class="lead">Crie uma turma, passe o código para os estudantes (eles entram em Perfil › Turmas) e acompanhe o progresso de cada um.</p>
         </div>
       </div>
-      <section class="card" style="margin-bottom: 16px">
+      <section class="card tw:mb-4">
         <form id="class-form" class="inline-form">
-          <div class="field" style="flex: 1; margin: 0">
+          <div class="field tw:flex-1 tw:m-0">
             <label for="class-name">Nome da turma</label>
             <input id="class-name" name="name" class="input" maxlength="80" placeholder="Ex.: Estrutura de Dados · 2026/2 · Noite" required />
           </div>

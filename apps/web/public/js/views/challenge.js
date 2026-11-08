@@ -157,7 +157,7 @@ export async function render({ root, params, isCurrent }) {
                   ${options.map((entry) => html`<option value="${entry.language}" ${entry.language === state.language ? html`selected` : ""}>${LANGUAGE_NAMES[entry.language]}</option>`)}
                 </select>
               </label>
-              <div class="btn-row" style="gap: 4px">
+              <div class="btn-row tw:gap-1">
                 <button id="search-code" class="btn btn-sm btn-ghost" type="button" title="Buscar no código (Ctrl+F)" aria-label="Buscar no código">${icon("search", 14)}</button>
                 <button id="reset-code" class="btn btn-sm btn-ghost" type="button" title="Voltar ao código inicial" aria-label="Voltar ao código inicial">${icon("reset", 14)}<span class="btn-label"> Código inicial</span></button>
                 <button id="fullscreen" class="btn btn-sm btn-ghost" type="button" title="Tela cheia" aria-label="Tela cheia" aria-pressed="false">${icon("maximize", 14)}</button>
@@ -225,7 +225,7 @@ export async function render({ root, params, isCurrent }) {
       ${hints.length ? html`<ol class="hint-list">${hints.map((hint) => html`<li>${hint}</li>`)}</ol>` : ""}
       ${hints.length < hintsTotal
         ? html`<button id="reveal-hint" class="btn btn-sm" type="button">${hints.length ? "Mostrar próxima dica" : "Mostrar a primeira dica"}</button>
-            <p class="muted small" style="margin: 6px 0 0">Dicas não tiram pontos.</p>`
+            <p class="muted small tw:mx-0 tw:mt-1.5 tw:mb-0">Dicas não tiram pontos.</p>`
         : ""}
     `;
   }
@@ -255,7 +255,7 @@ export async function render({ root, params, isCurrent }) {
             <div class="example">
               <strong>Exemplo ${index + 1}</strong>
               <div class="io-block"><span>${functionMode ? "Argumentos" : "Entrada"}</span><pre class="io">${functionMode ? formatArguments(example.input, challenge.functionSpec) : example.input}</pre></div>
-              <div class="io-block" style="margin: 0"><span>${functionMode ? "Retorno" : "Saída"}</span><pre class="io">${functionMode ? formatReturn(example.output) : example.output}</pre></div>
+              <div class="io-block tw:m-0"><span>${functionMode ? "Retorno" : "Saída"}</span><pre class="io">${functionMode ? formatReturn(example.output) : example.output}</pre></div>
             </div>
           `
         )}
@@ -266,7 +266,7 @@ export async function render({ root, params, isCurrent }) {
 
         ${challenge.complexity
           ? html`<h2>Complexidade esperada</h2>
-              <p class="muted small" style="margin: 0">Tempo <code>${challenge.complexity.time}</code> · espaço <code>${challenge.complexity.space}</code>. Os casos grandes são dimensionados para reprovar soluções mais lentas.</p>`
+              <p class="muted small tw:m-0">Tempo <code>${challenge.complexity.time}</code> · espaço <code>${challenge.complexity.space}</code>. Os casos grandes são dimensionados para reprovar soluções mais lentas.</p>`
           : ""}
 
         <h2>Limites de execução em ${LANGUAGE_LABELS[state.language]}</h2>
@@ -278,7 +278,7 @@ export async function render({ root, params, isCurrent }) {
 
         ${current.rules.length
           ? html`<h2>Regras deste desafio</h2>
-              <p class="muted small" style="margin: 0 0 8px">Verificadas no código antes dos testes; comentários não contam.</p>
+              <p class="muted small tw:mx-0 tw:mt-0 tw:mb-2">Verificadas no código antes dos testes; comentários não contam.</p>
               <ul class="rules-list">${current.rules.map((rule) => html`<li>${rule}</li>`)}</ul>`
           : ""}
 
@@ -286,13 +286,13 @@ export async function render({ root, params, isCurrent }) {
 
         ${state.help.followUps.length
           ? html`<h2>Perguntas de acompanhamento</h2>
-              <p class="muted small" style="margin: 0 0 6px">O que um entrevistador perguntaria depois:</p>
+              <p class="muted small tw:mx-0 tw:mt-0 tw:mb-1.5">O que um entrevistador perguntaria depois:</p>
               <ul>${state.help.followUps.map((question) => html`<li>${question}</li>`)}</ul>`
           : ""}
 
         <div class="hint-box">
           <strong>Como responder em ${LANGUAGE_LABELS[state.language]}</strong>
-          <p style="margin: 6px 0 0">${functionMode ? FUNCTION_HINTS[state.language] : STDIO_HINTS[state.language].text}</p>
+          <p class="tw:mx-0 tw:mt-1.5 tw:mb-0">${functionMode ? FUNCTION_HINTS[state.language] : STDIO_HINTS[state.language].text}</p>
           ${functionMode ? "" : html`<pre>${STDIO_HINTS[state.language].code}</pre>`}
         </div>
 
@@ -341,7 +341,7 @@ export async function render({ root, params, isCurrent }) {
             (value) => html`<button type="button" data-rate="${value}" class="${currentUserValue && value <= currentUserValue ? "is-on" : ""}" aria-label="${value} ${value === 1 ? "estrela" : "estrelas"}" aria-pressed="${currentUserValue === value}">★</button>`
           )}
         </div>
-        <p class="muted small" style="margin: 4px 0 0">
+        <p class="muted small tw:mx-0 tw:mt-1 tw:mb-0">
           ${total > 0 ? `${average.toFixed(1).replace(".", ",")}/5 · ${total} ${total === 1 ? "avaliação" : "avaliações"}` : "Nenhuma avaliação ainda."}
           ${currentUserValue ? ` · sua nota: ${currentUserValue}` : ""}
         </p>
@@ -402,7 +402,7 @@ export async function render({ root, params, isCurrent }) {
         ${renderTimeline()}
         ${state.compare.length === 2
           ? renderComparison()
-          : html`<p class="muted small" style="margin: 0 0 8px">Marque duas submissões para comparar o código lado a lado.</p>`}
+          : html`<p class="muted small tw:mx-0 tw:mt-0 tw:mb-2">Marque duas submissões para comparar o código lado a lado.</p>`}
         ${state.submissions.map(
           (submission, index) => html`
             <div class="submission-row-wrap">
@@ -440,7 +440,7 @@ export async function render({ root, params, isCurrent }) {
         </div>
         <button class="btn btn-primary btn-sm" type="submit">Publicar comentário</button>
       </form>
-      <div style="margin-top: 12px">
+      <div class="tw:mt-3">
         ${state.comments.length === 0
           ? emptyState("Nenhum comentário ainda. Comece a discussão!")
           : state.comments.map(
@@ -638,7 +638,7 @@ export async function render({ root, params, isCurrent }) {
           `
         )}
       </div>
-      <p class="muted small" style="margin: 0 0 8px">${current.executionStatus === "timeout" ? "Tempo limite excedido" : current.executionStatus === "runtime_error" ? "Erro de execução" : `Executado em ${current.durationMs} ms`}</p>
+      <p class="muted small tw:mx-0 tw:mt-0 tw:mb-2">${current.executionStatus === "timeout" ? "Tempo limite excedido" : current.executionStatus === "runtime_error" ? "Erro de execução" : `Executado em ${current.durationMs} ms`}</p>
       ${caseDetail(current, verdictContext)}
       ${!allPassed ? compileWarningsBlock(run.compileWarnings) : ""}
     `;
@@ -688,7 +688,7 @@ export async function render({ root, params, isCurrent }) {
       html`
         ${renderVerdict(submission, verdictContext)}
         ${submission.status === "accepted" ? html`<div id="runtime-box">${renderRuntime(submission)}</div>` : ""}
-        <p class="muted small" style="margin-top: 12px">
+        <p class="muted small tw:mt-3">
           Enviado ${formatRelative(submission.submittedAt)} em ${LANGUAGE_LABELS[submission.language] ?? submission.language} ·
           <button class="btn btn-sm btn-ghost" type="button" id="load-submission-code">Carregar este código no editor</button>
         </p>
@@ -713,13 +713,13 @@ export async function render({ root, params, isCurrent }) {
     const peak = Math.max(...data.buckets.map((bucket) => bucket.count), 1);
     return html`
       <div class="runtime-card">
-        <p style="margin: 0 0 8px"><strong>${data.runtimeMs} ms</strong> · mais rápido que <strong>${data.beatsPercent}%</strong> das ${data.solutions} soluções aceitas em ${LANGUAGE_LABELS[data.language]}.</p>
+        <p class="tw:mx-0 tw:mt-0 tw:mb-2"><strong>${data.runtimeMs} ms</strong> · mais rápido que <strong>${data.beatsPercent}%</strong> das ${data.solutions} soluções aceitas em ${LANGUAGE_LABELS[data.language]}.</p>
         <div class="runtime-histogram" role="img" aria-label="Distribuição dos tempos das soluções aceitas">
           ${data.buckets.map(
             (bucket) => html`<span class="${data.runtimeMs >= bucket.fromMs && data.runtimeMs <= bucket.toMs ? "is-mine" : ""}" style="height: ${Math.max(6, Math.round((bucket.count / peak) * 100))}%" title="${bucket.fromMs}–${bucket.toMs} ms: ${bucket.count}"></span>`
           )}
         </div>
-        <p class="muted small" style="margin: 6px 0 0">Tempo do caso mais lento, medido no juiz (inclui a inicialização do ambiente); varia um pouco entre execuções.</p>
+        <p class="muted small tw:mx-0 tw:mt-1.5 tw:mb-0">Tempo do caso mais lento, medido no juiz (inclui a inicialização do ambiente); varia um pouco entre execuções.</p>
       </div>
     `;
   }

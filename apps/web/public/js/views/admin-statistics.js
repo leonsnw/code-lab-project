@@ -22,7 +22,7 @@ export async function render({ root }) {
         ${renderFailures(statistics.challenges)}
 
         <section class="card">
-          <h2 style="margin-bottom: 10px">Por dificuldade</h2>
+          <h2 class="tw:mb-2.5">Por dificuldade</h2>
           <div class="table-wrap"><table>
             <thead><tr><th>Dificuldade</th><th class="num">Desafios</th><th class="num">Submissões</th><th class="num">Aceitação</th><th class="num">Participantes</th><th class="num">Resolveram</th></tr></thead>
             <tbody>${statistics.difficulties.map(
@@ -32,7 +32,7 @@ export async function render({ root }) {
         </section>
 
         <section class="card">
-          <h2 style="margin-bottom: 10px">Por desafio</h2>
+          <h2 class="tw:mb-2.5">Por desafio</h2>
           ${statistics.challenges.length === 0
             ? emptyState("Nenhum desafio cadastrado.")
             : html`<div class="table-wrap"><table>
@@ -52,7 +52,7 @@ export async function render({ root }) {
         </section>
 
         <section class="card">
-          <h2 style="margin-bottom: 10px">Por usuário</h2>
+          <h2 class="tw:mb-2.5">Por usuário</h2>
           <div class="table-wrap"><table>
             <thead><tr><th>Usuário</th><th>Papel</th><th class="num">Pontos</th><th class="num">Submissões</th><th class="num">Aceitação</th><th class="num">Resolvidos</th></tr></thead>
             <tbody>${statistics.users.map(
@@ -76,8 +76,8 @@ function renderFailures(challenges) {
     .slice(0, 10);
   return html`
     <section class="card">
-      <h2 style="margin-bottom: 4px">Onde os estudantes mais erram</h2>
-      <p class="muted small" style="margin: 0 0 12px">Desafios com mais envios reprovados e o veredito que mais aparece. Um erro dominante de tempo sugere que falta a técnica do módulo; erro de execução, bordas mal tratadas.</p>
+      <h2 class="tw:mb-1">Onde os estudantes mais erram</h2>
+      <p class="muted small tw:mx-0 tw:mt-0 tw:mb-3">Desafios com mais envios reprovados e o veredito que mais aparece. Um erro dominante de tempo sugere que falta a técnica do módulo; erro de execução, bordas mal tratadas.</p>
       ${ranked.length === 0
         ? emptyState("Nenhum envio reprovado ainda.")
         : html`<ul class="failure-list">${ranked.map(

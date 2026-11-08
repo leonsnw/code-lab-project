@@ -155,7 +155,7 @@ function skeleton(workspace) {
   return html`
     <div class="skeleton-page" aria-busy="true" aria-label="Carregando">
       <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-line" style="width: 46%"></div>
+      <div class="skeleton skeleton-line tw:w-[46%]"></div>
       <div class="skeleton-grid">${[0, 1, 2].map(() => html`<div class="skeleton skeleton-card"></div>`)}</div>
       <div class="skeleton skeleton-block"></div>
     </div>
@@ -215,7 +215,7 @@ async function route() {
           <p class="error-code">${missing ? "404" : error?.status >= 500 ? String(error.status) : "Ops"}</p>
           <h1>${missing ? "Não encontramos esta página" : "Não foi possível carregar esta página"}</h1>
           <p class="lead">${missing ? "O conteúdo pode ter sido removido ou o endereço está incorreto." : error.message}</p>
-          <p class="btn-row" style="justify-content: center">
+          <p class="btn-row tw:justify-center">
             ${missing ? "" : html`<button class="btn btn-primary" type="button" data-retry>Tentar de novo</button>`}
             <a class="btn" href="#/trilhas">Ver trilhas</a>
             <a class="btn btn-ghost" href="#/">Início</a>

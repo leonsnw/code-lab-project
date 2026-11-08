@@ -18,7 +18,7 @@ export async function render({ root, params, session }) {
         <a href="#/trilhas">Trilhas</a><span>›</span><a href="#/trilhas/${track.slug}">${track.title}</a><span>›</span><a href="#/trilhas/${track.slug}">${module.title}</a><span>›</span><span>${lesson.title}</span>
       </nav>
       <article class="card lesson">
-        <p class="muted small" style="margin: 0 0 4px">Lição · ~${lesson.estimatedMinutes} min</p>
+        <p class="muted small tw:mx-0 tw:mt-0 tw:mb-1">Lição · ~${lesson.estimatedMinutes} min</p>
         <h1>${lesson.title}</h1>
         <p class="lead">${lesson.summary}</p>
         ${renderMarkdown(lesson.content)}
@@ -28,7 +28,7 @@ export async function render({ root, params, session }) {
             ? html`<button id="complete-lesson" class="btn btn-primary" type="button">${icon("check", 14)} Concluir${next ? " e praticar" : ""}</button>`
             : html`<a class="btn btn-primary" href="#/entrar?volta=/licoes/${lesson.slug}">Entrar para registrar o progresso</a>`}
         </div>
-        ${next ? html`<p class="muted small" style="text-align: right; margin: 8px 0 0">A seguir: ${next.title}</p>` : ""}
+        ${next ? html`<p class="muted small tw:text-right tw:mx-0 tw:mt-2 tw:mb-0">A seguir: ${next.title}</p>` : ""}
       </article>
     `
   );
