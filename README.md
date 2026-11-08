@@ -4,7 +4,7 @@ Plataforma de estudo de programação com correção automática no estilo LeetC
 
 - **Conteúdo:** 4 trilhas, 34 módulos, 34 lições e 174 desafios (3.403 casos de teste). Cada desafio tem pelo menos 2 casos públicos e 12 ocultos; os que cobram complexidade usam entradas de até 200 mil elementos.
 - **Linguagens:** C em todos os desafios; JavaScript e Python em 147. Dos 174, 146 são no modo função (o aluno implementa só a função, como no LeetCode) e 28 no modo entrada/saída (os exercícios de C da disciplina).
-- **Stack:** Node.js 22+ (TypeScript 5, Express 5, Zod), PostgreSQL 16 com Prisma 6, frontend em HTML, CSS e módulos ES sem etapa de build, Vitest e Supertest. O juiz usa bubblewrap, unshare, prlimit, seccomp, gcc e python3.
+- **Stack:** Node.js 22+ (TypeScript 5, Express 5, Zod), PostgreSQL 16 com Prisma 6, frontend em JavaScript (módulos ES, sem bundler) com CSS compilado pelo Tailwind CSS v4, Vitest e Supertest. O juiz usa bubblewrap, unshare, prlimit, seccomp, gcc e python3.
 
 ## Sumário
 
@@ -29,8 +29,9 @@ code-lab-project/
         database/catalog/        # trilhas, módulos, lições e desafios (gerados de forma determinística)
         modules/submissions/     # juiz: sandbox, harness do modo função, comparadores, regras de código
         modules/…                # auth, conta, turmas, estatísticas, admin, observabilidade
-    web/public/                  # SPA (hash routing, sem build)
-  desafios/<slug>/               # solução correta e tentativas de burla de cada desafio
+    web/public/                  # SPA (hash routing, sem bundler); styles.css é gerado
+    web/styles/                  # app.css (Tailwind, prefixo tw:) + legacy.css (componentes)
+  desafios/<trilha>/<modulo>/<slug>/  # solução correta e tentativas de burla de cada desafio
   docs/                          # segurança, deploy, TDD e rastreabilidade do RFC
   compose.yaml                   # PostgreSQL local
   compose.prod.yaml, Dockerfile  # produção
@@ -46,7 +47,8 @@ npm install
 docker compose up -d postgres
 npm run db:migrate:deploy
 npm run db:seed        # catálogo e contas de demonstração (pode rodar mais de uma vez)
-npm run dev            # http://localhost:3333
+npm run dev            # http://localhost:3333 (compila o CSS e recompila ao salvar)
+npm run css:build      # só o CSS: apps/web/styles/ -> apps/web/public/styles.css (gerado, fora do git)
 ```
 
 O seed atualiza trilhas e desafios sem apagar usuários, submissões ou pontuações.
@@ -91,7 +93,7 @@ Os desafios são definidos em TypeScript (`apps/api/src/database/catalog/`), com
 
 ### Pasta `desafios/`
 
-Cada desafio tem uma pasta com `solucao.js`, `solucao.py` e `solucao.c` (conforme as linguagens aceitas) e pelo menos uma `burla.*`: uma tentativa de enganar o juiz, como decorar os exemplos, usar um algoritmo ingênuo lento demais ou um atalho proibido. A primeira linha de cada arquivo anuncia o veredito esperado. `apps/api/src/desafios-exemplo.test.ts` roda os 684 arquivos pelo juiz. Ele confere que toda solução é aceita, que toda burla recebe o veredito anunciado e que as burlas de resposta errada passam nos exemplos públicos.
+A pasta segue o catálogo: `desafios/<NN-trilha>/<NN-modulo>/<slug>/`, por exemplo `desafios/02-estrutura-de-dados/07-listas-encadeadas/ed-lista-circular/`. Cada desafio tem uma pasta com `solucao.js`, `solucao.py` e `solucao.c` (conforme as linguagens aceitas) e pelo menos uma `burla.*`: uma tentativa de enganar o juiz, como decorar os exemplos, usar um algoritmo ingênuo lento demais ou um atalho proibido. A primeira linha de cada arquivo anuncia o veredito esperado. `apps/api/src/desafios-exemplo.test.ts` roda os 684 arquivos pelo juiz. Ele confere que toda solução é aceita, que toda burla recebe o veredito anunciado e que as burlas de resposta errada passam nos exemplos públicos.
 
 ### Lint de conteúdo
 

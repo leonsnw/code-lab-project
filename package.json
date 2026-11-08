@@ -10,8 +10,10 @@
     "apps/api"
   ],
   "scripts": {
-    "dev": "npm run dev -w apps/api",
-    "build": "npm run build -w apps/api",
+    "dev": "npm run css:build && (npm run css:watch & npm run dev -w apps/api)",
+    "css:build": "tailwindcss -i apps/web/styles/app.css -o apps/web/public/styles.css --minify",
+    "css:watch": "tailwindcss -i apps/web/styles/app.css -o apps/web/public/styles.css --watch",
+    "build": "npm run css:build && npm run build -w apps/api",
     "db:generate": "npm run db:generate -w apps/api",
     "db:push": "npm run db:push -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
@@ -23,5 +25,9 @@
     "test:coverage": "npm run test:coverage -w apps/api",
     "test:integration": "npm run test:integration -w apps/api",
     "start": "npm run start -w apps/api"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
   }
 }

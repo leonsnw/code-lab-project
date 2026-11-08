@@ -34,5 +34,11 @@ yarn-debug.log*
 apps/api/node_modules/.prisma/
 scripts/e2e/shots/
 
+# CSS gerado pelo Tailwind (fonte: apps/web/styles/)
+apps/web/public/styles.css
+
 # Plano pessoal de commits
 PLANO-DE-COMMITS.md
+
+# Prompt usado para guiar a IA (não versionar)
+docs/prompt-produto-final.md

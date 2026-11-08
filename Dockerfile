@@ -10,6 +10,8 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 RUN npm ci
 COPY apps/api apps/api
+COPY apps/web apps/web
+# `npm run build` compila o CSS do Tailwind (apps/web/public/styles.css) e a API.
 RUN npm run db:generate && npm run build
 
 FROM node:24-bookworm-slim
@@ -18,7 +20,6 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build --chown=node:node /app /app
-COPY --chown=node:node apps/web apps/web
 USER node
 ENV NODE_ENV=production \
     PORT=3333 \

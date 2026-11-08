@@ -1,0 +1,111 @@
+/*
+ * Ponto de entrada do CSS do CodeLab (Tailwind CSS v4).
+ *
+ *   npm run css:build   -> apps/web/public/styles.css (minificado)
+ *   npm run css:watch   -> recompila ao salvar
+ *
+ * Camadas, da mais fraca para a mais forte: theme, components, utilities.
+ *  - theme: tokens do Tailwind mapeados para as variáveis do design system
+ *    (legacy.css), então `bg-surface`, `text-muted` etc. seguem o tema claro
+ *    e escuro sem `dark:`.
+ *  - components: o CSS dos componentes (legacy.css), sem alterações de
+ *    comportamento. O preflight do Tailwind NÃO é carregado de propósito:
+ *    ele zeraria estilos de elementos que o legacy.css já define.
+ *  - utilities: classes utilitárias, que vencem os componentes. É o que
+ *    substitui os atributos style="" estáticos nas telas.
+ *
+ * Todas as utilitárias levam o prefixo `tw:` (ex.: `tw:mt-2`, `tw:flex`).
+ * O legacy.css já tem classes com nomes iguais aos do Tailwind (.hidden,
+ * .grid, .table, .sr-only…); sem o prefixo, elas se sobrescreveriam.
+ */
+@layer theme, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "./legacy.css" layer(components);
+@import "tailwindcss/utilities.css" layer(utilities) source("../public");
+
+/*
+ * Refinamentos sobre os componentes existentes, escritos com @apply para
+ * reaproveitar as utilitárias do Tailwind sem tocar nas telas. Ficam na
+ * camada `components`, depois do legacy.css, então ganham dele em empate.
+ * `motion-safe`/`motion-reduce` respeitam prefers-reduced-motion.
+ */
+@layer components {
+  body {
+    @apply tw:antialiased;
+  }
+
+  /* Quebra de linha mais bonita em títulos e textos corridos. */
+  h1,
+  h2,
+  h3 {
+    @apply tw:text-balance;
+  }
+  .lead,
+  .card > p {
+    @apply tw:text-pretty;
+  }
+
+  /* Resposta ao clique: o botão "afunda" um pouco, exceto desabilitado. */
+  .btn {
+    @apply tw:transition tw:duration-150 tw:motion-safe:active:scale-[0.97] tw:motion-safe:disabled:active:scale-100;
+  }
+
+  /* Cards de trilha sobem de leve ao passar o mouse. */
+  .track-card {
+    @apply tw:transition tw:duration-150 tw:motion-safe:hover:-translate-y-0.5 tw:hover:shadow-md;
+  }
+
+  /* No celular o título do item de módulo quebra linha em vez de virar "…". */
+  .module-item-title {
+    @apply tw:max-sm:whitespace-normal;
+  }
+}
+
+/* Mesma regra do legacy.css: segue o sistema, a menos que o usuário escolha o tema. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-focus: var(--focus);
+  --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
+  --color-green-border: var(--green-border);
+  --color-red: var(--red);
+  --color-red-bg: var(--red-bg);
+  --color-red-border: var(--red-border);
+  --color-amber: var(--amber);
+  --color-orange: var(--orange);
+  --color-orange-bg: var(--orange-bg);
+  --color-orange-border: var(--orange-border);
+  --color-violet: var(--violet);
+  --color-violet-bg: var(--violet-bg);
+  --color-violet-border: var(--violet-border);
+  --color-code-bg: var(--code-bg);
+  --color-code-text: var(--code-text);
+
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+}

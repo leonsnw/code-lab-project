@@ -1391,7 +1391,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .toast.is-success { box-shadow: inset 3px 0 0 #22c55e, 0 8px 24px -8px rgba(0, 0, 0, 0.18); }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-6px); }
+  from { opacity: 0; transform: translateY(6px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
