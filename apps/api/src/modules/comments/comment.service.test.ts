@@ -22,7 +22,7 @@ describe("CommentService", () => {
       userId: "user-marina",
       challengeId: "challenge-soma",
       content: "Gostei dos casos de teste.",
-      author: { id: "user-marina", name: "Marina Silva" }
+      author: { id: "user-marina", name: "Leonardo" }
     });
   });
 
