@@ -39,7 +39,9 @@ Este guia sobe o Code Lab em um servidor Linux com Docker: API, frontend, juiz e
    docker compose -f compose.prod.yaml --env-file .env.production run --rm api npm run db:seed
    ```
 
-   Depois, **troque a senha do administrador de demonstração** (`admin@codelab.local`) em Perfil › Conta, ou crie outro administrador e remova esse.
+   O seed cria o administrador de demonstração (`admin@codelab.local`) com a senha pública `admin123`. Para não criá-lo assim, defina `SEED_ADMIN_PASSWORD` (e `SEED_STUDENT_PASSWORD`, para a conta de estudante) no `.env.production` antes de rodar o seed.
+
+   Depois, **troque a senha do administrador de demonstração** em Perfil › Conta, ou crie outro administrador e remova esse.
 
 4. Coloque um proxy reverso com HTTPS na frente da porta `127.0.0.1:3333` (Caddy, nginx, Traefik). Com Caddy, por exemplo:
 
@@ -59,7 +61,7 @@ docker compose -f compose.prod.yaml --env-file .env.production up -d --build
 docker compose -f compose.prod.yaml --env-file .env.production run --rm api npm run db:seed   # se o catálogo mudou
 ```
 
-O seed atualiza desafios e trilhas sem apagar usuários, submissões ou pontos.
+O seed atualiza desafios e trilhas sem apagar usuários, submissões ou pontos, e **não mexe em contas que já existem**: rodá-lo de novo não volta a senha nem o nome do administrador. As senhas iniciais só valem na primeira criação.
 
 ## E-mail
 
