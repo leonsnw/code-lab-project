@@ -53,6 +53,8 @@ model User {
   passwordHash String      @map("password_hash")
   role        UserRole     @default(STUDENT)
   emailVerifiedAt DateTime? @map("email_verified_at")
+  /// Sobe a cada logout; os tokens emitidos antes (versão menor) deixam de valer.
+  sessionVersion Int       @default(0) @map("session_version")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 

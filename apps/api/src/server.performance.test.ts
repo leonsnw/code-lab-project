@@ -35,7 +35,7 @@ describe("RNF03 - tempo de resposta das requisicoes comuns", () => {
     const registration = await agent.post("/api/auth/register").send({
       name: "Teste Performance",
       email: "performance@codelab.local",
-      password: "123456"
+      password: "12345678"
     });
     const profile = await agent.get("/api/me");
     const durationMs = performance.now() - startedAt;
@@ -54,7 +54,7 @@ describe("RNF03 - tempo de resposta das requisicoes comuns", () => {
     await agent.post("/api/auth/register").send({
       name: "Teste Comunidade",
       email: "comunidade-performance@codelab.local",
-      password: "123456"
+      password: "12345678"
     });
     const startedAt = performance.now();
 

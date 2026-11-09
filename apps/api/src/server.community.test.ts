@@ -12,7 +12,7 @@ function makeApp() {
 
 async function student(app: ReturnType<typeof createApp>, name: string, email: string) {
   const agent = request.agent(app);
-  const response = await agent.post("/api/auth/register").send({ name, email, password: "123456" });
+  const response = await agent.post("/api/auth/register").send({ name, email, password: "12345678" });
   return { agent, id: response.body.user.id as string };
 }
 

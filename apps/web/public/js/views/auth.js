@@ -35,14 +35,14 @@ export function render({ root, mode, query }) {
           </div>
           <div class="field">
             <label for="auth-password">Senha</label>
-            <input id="auth-password" name="password" type="password" autocomplete="${isLogin ? "current-password" : "new-password"}" minlength="${isLogin ? 1 : 6}" maxlength="72" required />
-            ${isLogin ? html`<small><a href="#/esqueci-senha">Esqueci minha senha</a></small>` : html`<small>Mínimo de 6 caracteres.</small>`}
+            <input id="auth-password" name="password" type="password" autocomplete="${isLogin ? "current-password" : "new-password"}" minlength="${isLogin ? 1 : 8}" maxlength="72" required />
+            ${isLogin ? html`<small><a href="#/esqueci-senha">Esqueci minha senha</a></small>` : html`<small>Mínimo de 8 caracteres.</small>`}
           </div>
           ${isLogin
             ? ""
             : html`<div class="field">
                 <label for="auth-confirmation">Confirmar senha</label>
-                <input id="auth-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+                <input id="auth-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
               </div>`}
           <button class="btn btn-primary tw:w-full" type="submit">${isLogin ? "Entrar" : "Criar conta"}</button>
           ${isLogin ? "" : html`<p class="muted small tw:mx-0 tw:mt-2.5 tw:mb-0">Ao criar a conta, você concorda com os <a href="#/termos">Termos de uso</a> e a <a href="#/privacidade">Política de privacidade</a>.</p>`}
@@ -91,7 +91,7 @@ export function render({ root, mode, query }) {
     if (!isLogin) {
       const name = String(data.get("name") ?? "").trim();
       if (!name) return showError("Informe seu nome.");
-      if (password.length < 6) return showError("A senha deve ter pelo menos 6 caracteres.");
+      if (password.length < 8) return showError("A senha deve ter pelo menos 8 caracteres.");
       if (password !== data.get("confirmation")) return showError("As senhas não coincidem.");
     }
 

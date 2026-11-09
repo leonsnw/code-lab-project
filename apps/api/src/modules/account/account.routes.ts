@@ -63,9 +63,9 @@ export function createAccountRouter({ accountService, authService, requireAuth, 
   });
 
   router.put("/me/password", requireAuth, async (request, response) => {
-    const { user, passwordHash } = await accountService.changePassword(getAuthenticatedUser(response).id, request.body);
+    const { user, passwordHash, sessionVersion } = await accountService.changePassword(getAuthenticatedUser(response).id, request.body);
     // As outras sessões caem; esta recebe um cookie novo com a senha atual.
-    setSessionCookie(response, authService.startSession(user, passwordHash).accessToken, production);
+    setSessionCookie(response, authService.startSession(user, passwordHash, sessionVersion).accessToken, production);
     response.json({ message: "Senha alterada. As outras sessões foram encerradas." });
   });
 

@@ -19,7 +19,7 @@ async function login(app: ReturnType<typeof createApp>, email: string, password:
 
 async function student(app: ReturnType<typeof createApp>, name: string, email: string) {
   const agent = request.agent(app);
-  await agent.post("/api/auth/register").send({ name, email, password: "123456" }).expect(201);
+  await agent.post("/api/auth/register").send({ name, email, password: "12345678" }).expect(201);
   return agent;
 }
 
@@ -67,7 +67,7 @@ describe("turmas", () => {
     const csv = await admin.get(`/api/admin/classes/${id}/export.csv`).expect(200);
     expect(csv.headers["content-type"]).toContain("text/csv");
     expect(csv.headers["content-disposition"]).toMatch(/turma-ed-2026-2-noite-\d{4}-\d{2}-\d{2}\.csv/);
-    const lines = csv.text.replace(/^﻿/, "").trim().split("\r\n");
+    const lines = csv.text.replace(/^\uFEFF/, "").trim().split("\r\n");
     expect(lines[0]).toContain("Nome;E-mail;Entrou em;Pontos");
     expect(lines[1]).toMatch(/^Ana Turma;ana\.turma@codelab\.local;\d{4}-\d{2}-\d{2};100;1;1;100;/);
     // Célula que começa com "=" vira texto, para não executar fórmula no Excel.

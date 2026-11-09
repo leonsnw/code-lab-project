@@ -31,7 +31,7 @@ function catalogSources(): string[] {
  */
 function loadCatalog(): Catalog {
   if (process.env.CODELAB_CATALOG_CACHE === "0") return buildCatalog();
-  let file: string | null = null;
+  let file: string | null;
   try {
     const hash = createHash("sha256");
     for (const source of catalogSources()) hash.update(source.slice(here.length)).update(readFileSync(source));

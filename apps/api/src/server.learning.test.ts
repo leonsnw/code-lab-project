@@ -33,7 +33,7 @@ function makeApp() {
 
 async function student(app: ReturnType<typeof createApp>, email = "trilha@codelab.local") {
   const agent = request.agent(app);
-  await agent.post("/api/auth/register").send({ name: "Estudante Trilha", email, password: "123456" });
+  await agent.post("/api/auth/register").send({ name: "Estudante Trilha", email, password: "12345678" });
   return agent;
 }
 

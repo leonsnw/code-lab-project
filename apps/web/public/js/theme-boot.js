@@ -3,6 +3,6 @@
 try {
   var savedTheme = localStorage.getItem("codelab-theme");
   if (savedTheme === "light" || savedTheme === "dark") document.documentElement.dataset.theme = savedTheme;
-} catch (error) {
+} catch {
   // Sem armazenamento: segue o tema do sistema.
 }

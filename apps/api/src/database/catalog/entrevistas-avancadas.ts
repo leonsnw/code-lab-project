@@ -577,10 +577,22 @@ function contarIlhas(grade: string[]): number {
     while (topo) {
       const celula = pilha[--topo];
       const c = celula % colunas;
-      if (celula >= colunas && terra[celula - colunas]) (terra[celula - colunas] = 0), (pilha[topo++] = celula - colunas);
-      if (celula + colunas < terra.length && terra[celula + colunas]) (terra[celula + colunas] = 0), (pilha[topo++] = celula + colunas);
-      if (c > 0 && terra[celula - 1]) (terra[celula - 1] = 0), (pilha[topo++] = celula - 1);
-      if (c + 1 < colunas && terra[celula + 1]) (terra[celula + 1] = 0), (pilha[topo++] = celula + 1);
+      if (celula >= colunas && terra[celula - colunas]) {
+        terra[celula - colunas] = 0;
+        pilha[topo++] = celula - colunas;
+      }
+      if (celula + colunas < terra.length && terra[celula + colunas]) {
+        terra[celula + colunas] = 0;
+        pilha[topo++] = celula + colunas;
+      }
+      if (c > 0 && terra[celula - 1]) {
+        terra[celula - 1] = 0;
+        pilha[topo++] = celula - 1;
+      }
+      if (c + 1 < colunas && terra[celula + 1]) {
+        terra[celula + 1] = 0;
+        pilha[topo++] = celula + 1;
+      }
     }
   }
   return ilhas;

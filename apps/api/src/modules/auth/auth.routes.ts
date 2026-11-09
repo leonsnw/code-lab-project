@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from "express";
 import { rateLimit } from "express-rate-limit";
 import type { User } from "../../domain/types.js";
+import { getAuthenticatedUser } from "./auth.middleware.js";
 import type { AuthService } from "./auth.service.js";
 import {
   clearSessionCookie,
@@ -49,7 +50,9 @@ export function createAuthRouter({
     });
   });
 
-  router.post("/logout", requireAuth, (_request, response) => {
+  router.post("/logout", requireAuth, async (_request, response) => {
+    // Só apagar o cookie não basta: um token copiado (ou enviado em Authorization) continuaria valendo.
+    await authService.logout(getAuthenticatedUser(response).id);
     clearSessionCookie(response, production);
     response.json({ message: "Logout realizado com sucesso." });
   });

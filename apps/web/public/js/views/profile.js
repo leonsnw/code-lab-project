@@ -100,35 +100,85 @@ export async function render({ root, query }) {
 
   const target = $("#history", root);
 
+  // O histórico vem paginado: carrega 20 por vez e acrescenta as próximas ao fim da lista,
+  // sem repintar o que já está na tela (os itens que a pessoa abriu continuam abertos).
+  const PAGE_SIZE = 20;
+  let pagination = null;
+  let shown = 0;
+  let generation = 0; // descarta respostas de um filtro que já foi trocado
+
+  const historyItem = (submission) => {
+    const challenge = catalog.byId.get(submission.challengeId);
+    return html`
+      <details class="history-detail">
+        <summary>
+          ${statusPill(submission.status)}
+          <strong>${challenge?.title ?? "Desafio removido"}</strong>
+          <span class="muted tw:ml-auto">${submission.result.passedTests}/${submission.result.totalTests} casos · ${formatDateTime(submission.submittedAt)}${submission.scoreAwarded ? ` · +${submission.scoreAwarded} pts` : ""}</span>
+        </summary>
+        <div class="history-body">
+          ${renderVerdict(submission)}
+          <p class="field-label tw:mx-0 tw:mt-3.5 tw:mb-0">Código enviado</p>
+          <pre class="code-view">${raw(highlight(submission.sourceCode, submission.language))}</pre>
+          ${challenge ? html`<p class="tw:mx-0 tw:mt-2.5 tw:mb-0"><a class="btn btn-sm" href="#/desafios/${challenge.slug}">Abrir desafio</a></p>` : ""}
+        </div>
+      </details>
+    `;
+  };
+
+  function paintFooter(errorMessage = "") {
+    const footer = $("#history-footer", target);
+    if (!footer) return;
+    const hasMore = pagination.page < pagination.totalPages;
+    paint(
+      footer,
+      html`
+        <div class="tw:mt-3.5 tw:flex tw:items-center tw:justify-between tw:gap-3">
+          <span class="muted">Mostrando ${shown} de ${pagination.total}</span>
+          ${hasMore ? html`<button id="history-more" class="btn btn-sm" type="button">Carregar mais</button>` : ""}
+        </div>
+        ${errorMessage ? html`<div class="alert alert-error tw:mt-2.5" role="alert">${errorMessage}</div>` : ""}
+      `
+    );
+    $("#history-more", footer)?.addEventListener("click", loadMore);
+  }
+
+  const fetchPage = (page) => api.submissions({ status: status || undefined, page, limit: PAGE_SIZE });
+
   async function loadHistory() {
+    const current = ++generation;
     paint(target, html`<div class="skeleton skeleton-block" aria-label="Carregando histórico"></div>`);
     try {
-      const { submissions } = await api.submissions(status || undefined);
+      const data = await fetchPage(1);
+      if (current !== generation) return;
+      pagination = data.pagination;
+      shown = data.submissions.length;
       paint(
         target,
-        submissions.length === 0
+        data.submissions.length === 0
           ? emptyState(status ? "Nenhuma submissão com esse veredito." : "Você ainda não enviou soluções.")
-          : html`<div class="history-list">${submissions.map((submission) => {
-              const challenge = catalog.byId.get(submission.challengeId);
-              return html`
-                <details class="history-detail">
-                  <summary>
-                    ${statusPill(submission.status)}
-                    <strong>${challenge?.title ?? "Desafio removido"}</strong>
-                    <span class="muted tw:ml-auto">${submission.result.passedTests}/${submission.result.totalTests} casos · ${formatDateTime(submission.submittedAt)}${submission.scoreAwarded ? ` · +${submission.scoreAwarded} pts` : ""}</span>
-                  </summary>
-                  <div class="history-body">
-                    ${renderVerdict(submission)}
-                    <p class="field-label tw:mx-0 tw:mt-3.5 tw:mb-0">Código enviado</p>
-                    <pre class="code-view">${raw(highlight(submission.sourceCode, submission.language))}</pre>
-                    ${challenge ? html`<p class="tw:mx-0 tw:mt-2.5 tw:mb-0"><a class="btn btn-sm" href="#/desafios/${challenge.slug}">Abrir desafio</a></p>` : ""}
-                  </div>
-                </details>
-              `;
-            })}</div>`
+          : html`<div id="history-items" class="history-list">${data.submissions.map(historyItem)}</div><div id="history-footer"></div>`
       );
+      if (data.submissions.length > 0) paintFooter();
     } catch (error) {
-      paint(target, html`<div class="alert alert-error">${error.message}</div>`);
+      if (current === generation) paint(target, html`<div class="alert alert-error">${error.message}</div>`);
+    }
+  }
+
+  async function loadMore(event) {
+    const current = generation;
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "Carregando…";
+    try {
+      const data = await fetchPage(pagination.page + 1);
+      if (current !== generation) return;
+      pagination = data.pagination;
+      shown += data.submissions.length;
+      $("#history-items", target).insertAdjacentHTML("beforeend", data.submissions.map((submission) => historyItem(submission).toString()).join(""));
+      paintFooter();
+    } catch (error) {
+      if (current === generation) paintFooter(error.message);
     }
   }
 

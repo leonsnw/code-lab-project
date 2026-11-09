@@ -10,7 +10,8 @@ import {
   randomInt,
   randomWord,
   shuffle,
-  type CaseDefinition
+  type CaseDefinition,
+  type Generated
 } from "./helpers.js";
 import { moduleId } from "./tracks.js";
 
@@ -314,7 +315,7 @@ function contarOcorrencias(): Challenge {
   add(medium, -10);
   const tail = randomArray(random, 100, 1, 3);
   add(tail, tail[tail.length - 1]);
-  const cases: Array<[{ spec: any; value: any }, number]> = [
+  const cases: Array<[Generated, number]> = [
     [gen({ $gen: "ints", n: 100000, min: -1000000000, max: 1000000000, seed: 200402, set: { "7": 123456789, "99999": 123456789 } }), 123456789],
     [gen({ $gen: "repeat", n: 200000, value: 7 }), 7]
   ];
@@ -587,7 +588,7 @@ function rotacionarVetor(): Challenge {
   add([-1, -100, 3, 99], 1000000000);
   add(randomArray(random, 100, -100000, 100000), randomInt(random, 0, 1000000000));
   add(randomArray(random, 1000, -100000, 100000), 999);
-  const cases: Array<[{ spec: any; value: any }, number]> = [
+  const cases: Array<[Generated, number]> = [
     [gen({ $gen: "ints", n: 5000, min: -100000, max: 100000, seed: 200701 }), 999999999],
     [gen({ $gen: "range", n: 5000, start: 1 }), 1000000000],
     [gen({ $gen: "ints", n: 4999, min: -100000, max: 100000, seed: 200702 }), 4999 * 200000],
@@ -1610,7 +1611,7 @@ function anagramas(): Challenge {
   const other = randomWord(random, 300, 300, "abc");
   add(other, shuffle(random, [...other]).join("").replace("a", "b").replace("c", "a"));
   const part = (n: number, seed: number) => ({ $gen: "string" as const, n, seed });
-  const pairs: Array<[{ spec: any; value: any }, { spec: any; value: any }]> = [
+  const pairs: Array<[Generated, Generated]> = [
     [
       gen({ $gen: "concat", parts: [part(50000, 201601), part(50000, 201602)] }),
       gen({ $gen: "concat", parts: [part(50000, 201602), part(50000, 201601)] })

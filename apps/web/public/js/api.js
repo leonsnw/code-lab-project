@@ -75,7 +75,15 @@ export const api = {
   trackProgress: () => request("/api/tracks/progress"),
   lesson: (slug) => request(`/api/lessons/${encode(slug)}`),
   completeLesson: (slug) => request(`/api/lessons/${encode(slug)}/complete`, { method: "POST" }),
-  submissions: (status) => request(`/api/submissions${status ? `?status=${encode(status)}` : ""}`),
+  // Histórico paginado: a resposta traz `pagination` ({ page, limit, total, totalPages }).
+  submissions: ({ status, page, limit } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (page) params.set("page", String(page));
+    if (limit) params.set("limit", String(limit));
+    const query = params.toString();
+    return request(`/api/submissions${query ? `?${query}` : ""}`);
+  },
 
   comments: (slug) => request(`/api/challenges/${encode(slug)}/comments`),
   addComment: (slug, content) =>

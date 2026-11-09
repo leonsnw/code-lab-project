@@ -280,6 +280,25 @@ export class PrismaStore implements CodeLabStore {
     });
   }
 
+  async failStalePendingSubmissions(input: {
+    submittedBefore: Date;
+    evaluatedAt: Date;
+    errorMessage: string;
+  }): Promise<number> {
+    // Uma única UPDATE condicional: se a avaliação terminar bem na hora, ela já saiu de
+    // `pending` e esta consulta não a toca (e completeSubmission ignora o que não é pending).
+    const result = await this.prisma.submission.updateMany({
+      where: { status: PrismaSubmissionStatus.PENDING, submittedAt: { lt: input.submittedBefore } },
+      data: {
+        status: PrismaSubmissionStatus.INTERNAL_ERROR,
+        scoreAwarded: 0,
+        evaluatedAt: input.evaluatedAt,
+        errorMessage: input.errorMessage
+      }
+    });
+    return result.count;
+  }
+
   async completeSubmission(
     input: CompleteSubmissionInput
   ): Promise<Submission> {
@@ -378,12 +397,33 @@ export class PrismaStore implements CodeLabStore {
         status: status ? toPrismaSubmissionStatus(status) : undefined
       },
       include: submissionInclude,
-      orderBy: {
-        submittedAt: "desc"
-      }
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }]
     });
 
     return submissions.map(mapSubmission);
+  }
+
+  async listSubmissionsPage(
+    filters: { userId?: string; challengeId?: string; status?: SubmissionStatus },
+    page: { skip: number; take: number }
+  ): Promise<{ items: Submission[]; total: number }> {
+    const where = {
+      userId: filters.userId,
+      challengeId: filters.challengeId,
+      status: filters.status ? toPrismaSubmissionStatus(filters.status) : undefined
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.submission.findMany({
+        where,
+        include: submissionInclude,
+        // O id desempata envios no mesmo instante: sem isso, uma página pode repetir ou pular linhas.
+        orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+        skip: page.skip,
+        take: page.take
+      }),
+      this.prisma.submission.count({ where })
+    ]);
+    return { items: items.map(mapSubmission), total };
   }
 
   async getScore(userId: string): Promise<ScoreSummary> {
@@ -717,6 +757,11 @@ export class PrismaStore implements CodeLabStore {
     return user ? mapUserCredentials(user) : undefined;
   }
 
+  async revokeSessions(userId: string): Promise<void> {
+    // updateMany não falha quando a conta já foi apagada.
+    await this.prisma.user.updateMany({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+  }
+
   async getAccountStatus(userId: string): Promise<AccountStatus | undefined> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true, createdAt: true } });
     return user ?? undefined;
@@ -853,11 +898,13 @@ function mapUserCredentials(user: {
   name: string;
   email: string;
   passwordHash: string;
+  sessionVersion: number;
   role: PrismaUserRole;
 }): UserCredentials {
   return {
     ...mapUser(user),
-    passwordHash: user.passwordHash
+    passwordHash: user.passwordHash,
+    sessionVersion: user.sessionVersion
   };
 }
 

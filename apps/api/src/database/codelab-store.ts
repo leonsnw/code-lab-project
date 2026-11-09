@@ -69,11 +69,30 @@ export interface CodeLabStore {
   deactivateChallenge(challengeId: string): Promise<Challenge>;
   addSubmission(submission: Submission): Promise<void>;
   completeSubmission(input: CompleteSubmissionInput): Promise<Submission>;
+  /**
+   * Fecha como `internal_error` as submissões ainda `pending` enviadas antes de
+   * `submittedBefore`: a API caiu ou reiniciou no meio da avaliação e ninguém mais
+   * vai concluí-las. As recentes, que talvez ainda estejam na fila, não são tocadas.
+   * Devolve quantas foram fechadas.
+   */
+  failStalePendingSubmissions(input: {
+    submittedBefore: Date;
+    evaluatedAt: Date;
+    errorMessage: string;
+  }): Promise<number>;
   listSubmissions(
     userId?: string,
     challengeId?: string,
     status?: SubmissionStatus
   ): Promise<Submission[]>;
+  /**
+   * Uma página do histórico (mais recentes primeiro) e o total que casa com o filtro.
+   * `listSubmissions` devolve tudo e fica para relatórios e exportação; as telas usam esta.
+   */
+  listSubmissionsPage(
+    filters: { userId?: string; challengeId?: string; status?: SubmissionStatus },
+    page: { skip: number; take: number }
+  ): Promise<{ items: Submission[]; total: number }>;
   getScore(userId: string): Promise<ScoreSummary>;
   getUserProgress(userId: string): Promise<UserProgress>;
   getRanking(): Promise<RankingEntry[]>;
@@ -94,6 +113,8 @@ export interface CodeLabStore {
 
   // ---------- Conta (LGPD, recuperação de senha, verificação de e-mail) ----------
   findUserCredentialsById(userId: string): Promise<UserCredentials | undefined>;
+  /** Encerra as sessões abertas: sobe a versão de sessão e os tokens antigos deixam de valer. */
+  revokeSessions(userId: string): Promise<void>;
   getAccountStatus(userId: string): Promise<AccountStatus | undefined>;
   updateUser(userId: string, input: UpdateUserInput): Promise<User>;
   /** Apaga a conta e, em cascata, submissões, comentários, avaliações e progresso. */

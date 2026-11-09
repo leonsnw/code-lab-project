@@ -51,7 +51,7 @@ npm run dev            # http://localhost:3333 (compila o CSS e recompila ao sal
 npm run css:build      # só o CSS: apps/web/styles/ -> apps/web/public/styles.css (gerado, fora do git)
 ```
 
-O seed atualiza trilhas e desafios sem apagar usuários, submissões ou pontuações.
+O seed atualiza trilhas e desafios sem apagar usuários, submissões ou pontuações, e não mexe nas contas de demonstração que já existem: rodá-lo de novo não volta a senha nem o nome. As senhas iniciais só valem na criação; em produção, defina `SEED_ADMIN_PASSWORD` (e `SEED_STUDENT_PASSWORD`) antes do primeiro seed.
 
 ### Contas de demonstração
 
@@ -77,6 +77,7 @@ Novos cadastros são sempre estudantes.
 | `JUDGE_CONCURRENCY` | avaliações simultâneas (padrão: metade dos núcleos) |
 | `LOG_REQUESTS=0` | desliga o log JSON por requisição |
 | `CODELAB_CATALOG_CACHE=0` | desliga o cache em disco do catálogo |
+| `SEED_ADMIN_PASSWORD`, `SEED_STUDENT_PASSWORD` | senhas iniciais das contas de demonstração, usadas só quando o seed cria a conta |
 
 ## Trilhas e desafios
 
@@ -153,7 +154,7 @@ Detalhes, ameaças e riscos residuais em [docs/seguranca-avaliacao.md](docs/segu
 |---|---|---|
 | `GET /health` (`?detalhes` inclui o juiz) | público | saúde |
 | `GET /metrics` | token | métricas Prometheus |
-| `POST /api/auth/register`, `/login`, `/logout` | público / sessão | autenticação por cookie HttpOnly |
+| `POST /api/auth/register`, `/login`, `/logout` | público / sessão | autenticação por cookie HttpOnly; a senha tem no mínimo 8 caracteres; o logout invalida os tokens emitidos até então |
 | `POST /api/auth/forgot-password`, `/reset-password`, `/verify-email` | público | recuperação de senha e verificação |
 | `GET /api/me`, `PATCH /api/me`, `DELETE /api/me` | sessão | perfil, edição, exclusão |
 | `PUT /api/me/password`, `GET /api/me/export`, `GET /api/me/account`, `POST /api/me/verification` | sessão | senha, exportação LGPD, estado da conta |
@@ -165,7 +166,7 @@ Detalhes, ameaças e riscos residuais em [docs/seguranca-avaliacao.md](docs/segu
 | `POST /api/challenges/:slug/hints`, `/solution` | sessão | dicas e solução comentada |
 | `GET /api/challenges/:slug/runtime` | sessão | distribuição de tempos das aceitas |
 | `GET/POST /api/challenges/:slug/comments`, `GET/PUT …/rating` | sessão | discussão e avaliação |
-| `GET /api/submissions` | sessão | histórico (`?status=`) |
+| `GET /api/submissions` | sessão | histórico paginado (`?status=&page=&limit=`; padrão 20 por página, máximo 100; a resposta traz `pagination`) |
 | `GET /api/ranking?periodo=semana\|mes\|tudo&trilha=` | público | ranking |
 | `POST /api/classes/join`, `GET /api/me/classes`, `DELETE /api/me/classes/:id` | sessão | turmas do estudante |
 | `/api/admin/challenges` (CRUD), `POST …/validate`, `POST …/generate-cases` | admin | desafios e ferramentas |
@@ -180,7 +181,18 @@ npm run test:integration # PostgreSQL real (use um banco descartável)
 npm run test:coverage
 ```
 
-Sem `bwrap`, `gcc` ou `python3`, os testes que dependem deles são pulados.
+Sem `bwrap`, `gcc` ou `python3`, os testes que dependem deles são pulados. Sem a pasta `desafios/` (que não é versionada), os testes dela também são pulados.
+
+### Lint e formatação
+
+```bash
+npm run lint            # ESLint (TypeScript e frontend); o CI falha se houver erro
+npm run lint:fix        # corrige o que dá para corrigir sozinho
+npm run format:check    # confere o Prettier (o CI também falha aqui)
+npm run format -- <arquivo>   # formata um arquivo
+```
+
+O código é anterior ao Prettier, então os arquivos legados ainda não formatados ficam listados no fim do `.prettierignore` e não são verificados. Ao mexer num deles, rode `npm run format -- <arquivo>` e remova a linha da lista, de preferência num commit só de formatação. Arquivos novos entram sempre verificados.
 
 ## Produção
 

@@ -19,6 +19,8 @@ function inline(text) {
       const external = href.startsWith("http");
       return `<a href="${href}"${external ? ' target="_blank" rel="noopener noreferrer"' : ""}>${label}</a>`;
     });
+  // Os marcadores de trechos de código usam NUL, que não aparece em texto Markdown.
+  // eslint-disable-next-line no-control-regex
   return output.replace(/\u0000(\d+)\u0000/g, (_, index) => codes[Number(index)]);
 }
 

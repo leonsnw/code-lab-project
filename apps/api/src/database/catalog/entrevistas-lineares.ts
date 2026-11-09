@@ -68,8 +68,8 @@ function casoGrandeDoisNumeros(seed: number, n: number, span: number, alvo: numb
   const random = createRandom(seed + 1);
   const lo = Math.max(-LIMITE_VALOR, alvo - LIMITE_VALOR);
   const hi = Math.min(LIMITE_VALOR, alvo + LIMITE_VALOR);
-  let a = 0;
-  let b = 0;
+  let a: number;
+  let b: number;
   do {
     a = randomInt(random, lo, hi);
     b = alvo - a;

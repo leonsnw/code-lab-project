@@ -84,6 +84,8 @@ export interface User {
 
 export interface UserCredentials extends User {
   passwordHash: string;
+  /** Sobe a cada logout; tokens com versão menor deixam de valer. Ausente conta como 0. */
+  sessionVersion?: number;
 }
 
 export interface CreateUserInput {

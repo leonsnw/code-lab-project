@@ -31,7 +31,7 @@ describe("AuthService", () => {
       const result = await service.register({
         name: "  Ana   Maria  Silva  ",
         email: "  ANA@EMAIL.COM  ",
-        password: "123456"
+        password: "12345678"
       });
 
       expect(result).toMatchObject({
@@ -43,17 +43,18 @@ describe("AuthService", () => {
         }
       });
       expect(result.user).not.toHaveProperty("passwordHash");
-      expect(passwordHasher.hash).toHaveBeenCalledWith("123456", 10);
-      expect(tokenService.issue).toHaveBeenCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password") });
+      expect(passwordHasher.hash).toHaveBeenCalledWith("12345678", 10);
+      expect(tokenService.issue).toHaveBeenCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password"), sessionVersion: 0 });
       await expect(store.findUserCredentialsByEmail("ana@email.com")).resolves.toMatchObject({
         passwordHash: "hashed-password"
       });
     });
 
     it.each([
-      [{ name: "", email: "ana@email.com", password: "123456" }, "Nome é obrigatório."],
-      [{ name: "Ana Silva", email: "email-invalido", password: "123456" }, "E-mail inválido."],
-      [{ name: "Ana Silva", email: "ana@email.com", password: "123" }, "A senha deve ter pelo menos 6 caracteres."]
+      [{ name: "", email: "ana@email.com", password: "12345678" }, "Nome é obrigatório."],
+      [{ name: "Ana Silva", email: "email-invalido", password: "12345678" }, "E-mail inválido."],
+      [{ name: "Ana Silva", email: "ana@email.com", password: "123" }, "A senha deve ter pelo menos 8 caracteres."],
+      [{ name: "Ana Silva", email: "ana@email.com", password: "1234567" }, "A senha deve ter pelo menos 8 caracteres."]
     ])("rejeita cadastro inválido", async (input, message) => {
       const { store, service } = makeSubject();
 
@@ -69,7 +70,7 @@ describe("AuthService", () => {
       const input = {
         name: "Ana Silva",
         email: "ana@email.com",
-        password: "123456"
+        password: "12345678"
       };
 
       await service.register(input);
@@ -89,20 +90,20 @@ describe("AuthService", () => {
       await service.register({
         name: "Ana Silva",
         email: "ana@email.com",
-        password: "123456"
+        password: "12345678"
       });
       vi.mocked(passwordHasher.hash).mockClear();
 
       const result = await service.login({
         email: "  ANA@EMAIL.COM ",
-        password: "123456"
+        password: "12345678"
       });
 
       expect(passwordHasher.compare).toHaveBeenCalledWith(
-        "123456",
+        "12345678",
         "hashed-password"
       );
-      expect(tokenService.issue).toHaveBeenLastCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password") });
+      expect(tokenService.issue).toHaveBeenLastCalledWith(result.user, { passwordVersion: passwordVersion("hashed-password"), sessionVersion: 0 });
       expect(result.user).not.toHaveProperty("passwordHash");
     });
 
@@ -110,7 +111,7 @@ describe("AuthService", () => {
       const { passwordHasher, service } = makeSubject();
 
       await expect(
-        service.login({ email: "ninguem@email.com", password: "123456" })
+        service.login({ email: "ninguem@email.com", password: "12345678" })
       ).rejects.toMatchObject({
         message: "E-mail ou senha inválidos.",
         statusCode: 401
@@ -119,7 +120,7 @@ describe("AuthService", () => {
       await service.register({
         name: "Ana Silva",
         email: "ana@email.com",
-        password: "123456"
+        password: "12345678"
       });
       vi.mocked(passwordHasher.compare).mockResolvedValue(false);
 

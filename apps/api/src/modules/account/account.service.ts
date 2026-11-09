@@ -128,7 +128,7 @@ export class AccountService {
   }
 
   /** Troca a senha e devolve o novo hash (a rota emite um cookie novo para esta sessão). */
-  async changePassword(userId: string, input: unknown): Promise<{ user: User; passwordHash: string }> {
+  async changePassword(userId: string, input: unknown): Promise<{ user: User; passwordHash: string; sessionVersion?: number }> {
     const { currentPassword, newPassword } = parseOrThrow(changePasswordSchema, input);
     const credentials = await this.store.findUserCredentialsById(userId);
     if (!credentials || !(await this.passwordHasher.compare(currentPassword, credentials.passwordHash))) {
@@ -136,7 +136,7 @@ export class AccountService {
     }
     const passwordHash = await this.passwordHasher.hash(newPassword, SALT_ROUNDS);
     const user = await this.store.updateUser(userId, { passwordHash });
-    return { user, passwordHash };
+    return { user, passwordHash, sessionVersion: credentials.sessionVersion };
   }
 
   /** Portabilidade (LGPD, art. 18): tudo o que a plataforma guarda sobre a pessoa. */
