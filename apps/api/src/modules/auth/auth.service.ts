@@ -10,10 +10,13 @@ export const SALT_ROUNDS = 10;
 const DUMMY_PASSWORD_HASH =
   "$2b$10$fH3DkQnuSlijgJH9aknS6.aP8l5.uolrmIvkHdjFk.55mx7l9Puri";
 
+/** Mínimo de 8 caracteres, sem exigir símbolos (recomendação atual do NIST). O limite de 72 é o do bcrypt. */
+export const MIN_PASSWORD_LENGTH = 8;
+
 export const passwordSchema = z
   .string()
   .min(1, "Senha é obrigatória.")
-  .min(6, "A senha deve ter pelo menos 6 caracteres.")
+  .min(MIN_PASSWORD_LENGTH, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`)
   .max(72, "A senha deve ter no máximo 72 caracteres.");
 
 export const nameSchema = z
@@ -37,11 +40,7 @@ const registerSchema = z.object({
     .email("E-mail inválido.")
     .max(254, "O e-mail deve ter no máximo 254 caracteres.")
     .transform((email) => email.toLowerCase()),
-  password: z
-    .string()
-    .min(1, "Senha é obrigatória.")
-    .min(6, "A senha deve ter pelo menos 6 caracteres.")
-    .max(72, "A senha deve ter no máximo 72 caracteres.")
+  password: passwordSchema
 });
 
 const loginSchema = z.object({
@@ -106,13 +105,18 @@ export class AuthService {
       email: credentials.email,
       role: credentials.role
     };
-    return this.startSession(user, credentials.passwordHash);
+    return this.startSession(user, credentials.passwordHash, credentials.sessionVersion);
   }
 
-  startSession(user: User, passwordHash: string): AuthSession {
+  /** Encerra as sessões abertas da pessoa: os tokens emitidos até agora deixam de valer. */
+  async logout(userId: string): Promise<void> {
+    await this.store.revokeSessions(userId);
+  }
+
+  startSession(user: User, passwordHash: string, sessionVersion = 0): AuthSession {
     return {
       user,
-      accessToken: this.tokenService.issue(user, { passwordVersion: passwordVersion(passwordHash) })
+      accessToken: this.tokenService.issue(user, { passwordVersion: passwordVersion(passwordHash), sessionVersion })
     };
   }
 }

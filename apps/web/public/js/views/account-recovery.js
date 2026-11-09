@@ -75,12 +75,12 @@ export async function render({ root, mode, query }) {
           <form id="reset-form" novalidate>
             <div class="field">
               <label for="reset-password">Nova senha</label>
-              <input id="reset-password" name="password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
-              <small>Mínimo de 6 caracteres.</small>
+              <input id="reset-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+              <small>Mínimo de 8 caracteres.</small>
             </div>
             <div class="field">
               <label for="reset-confirmation">Confirmar senha</label>
-              <input id="reset-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+              <input id="reset-confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
             </div>
             <button class="btn btn-primary tw:w-full" type="submit">Salvar nova senha</button>
           </form>
@@ -92,7 +92,7 @@ export async function render({ root, mode, query }) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const password = form.password.value;
-      if (password.length < 6) return showMessage(root, "A senha deve ter pelo menos 6 caracteres.");
+      if (password.length < 8) return showMessage(root, "A senha deve ter pelo menos 8 caracteres.");
       if (password !== form.confirmation.value) return showMessage(root, "As senhas não coincidem.");
       const button = form.querySelector("button");
       button.disabled = true;

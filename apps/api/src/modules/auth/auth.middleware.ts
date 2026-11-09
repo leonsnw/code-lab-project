@@ -28,10 +28,17 @@ export function createRequireAuth(
       }
 
       const payload = tokenService.verify(token);
-      const credentials = payload.passwordVersion ? await store.findUserCredentialsById(payload.userId) : undefined;
-      const user = payload.passwordVersion ? credentials && stripCredentials(credentials) : await store.findUserById(payload.userId);
-      // Senha trocada depois do login: a sessão antiga deixa de valer.
-      if (!user || (credentials && passwordVersion(credentials.passwordHash) !== payload.passwordVersion)) {
+      const credentials = await store.findUserCredentialsById(payload.userId);
+      const user = credentials && stripCredentials(credentials);
+      const currentSessionVersion = credentials?.sessionVersion ?? 0;
+      // Senha trocada depois do login, ou logout feito depois da emissão (a versão de
+      // sessão subiu): a sessão antiga deixa de valer. Tokens sem `sv` valem como versão 0.
+      if (
+        !credentials ||
+        !user ||
+        (payload.passwordVersion && passwordVersion(credentials.passwordHash) !== payload.passwordVersion) ||
+        (payload.sessionVersion ?? 0) !== currentSessionVersion
+      ) {
         throw new DomainError(
           "Sessão inválida ou expirada. Entre novamente.",
           401
@@ -40,7 +47,11 @@ export function createRequireAuth(
 
       // Renovação deslizante: quem está usando a plataforma não é deslogado no meio de um desafio.
       if (!match && token === cookieToken && payload.issuedAt && now() / 1000 - payload.issuedAt > RENEW_AFTER_SECONDS) {
-        setSessionCookie(response, tokenService.issue(user, { passwordVersion: payload.passwordVersion }), Boolean(options.production));
+        setSessionCookie(
+          response,
+          tokenService.issue(user, { passwordVersion: payload.passwordVersion, sessionVersion: currentSessionVersion }),
+          Boolean(options.production)
+        );
       }
 
       response.locals[AUTHENTICATED_USER_KEY] = user;

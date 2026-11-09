@@ -17,10 +17,13 @@ import { isSolved, refreshSession } from "../session.js";
 import { itemHref } from "../learning.js";
 
 export async function render({ root }) {
-  const [session, catalog, history, rankingData, learning, activityData, accountData] = await Promise.all([
+  // O histórico é paginado: o painel pede só as 6 mais recentes e usa o total de cada
+  // consulta para os números (tentativas e aceitas), em vez de contar a lista inteira.
+  const [session, catalog, history, acceptedHistory, rankingData, learning, activityData, accountData] = await Promise.all([
     refreshSession(),
     loadCatalog(),
-    api.submissions(),
+    api.submissions({ limit: 6 }),
+    api.submissions({ status: "accepted", limit: 1 }),
     api.ranking(),
     api.trackProgress().catch(() => null),
     api.activity().catch(() => null),
@@ -32,8 +35,8 @@ export async function render({ root }) {
   const position = rankingData.ranking.findIndex((entry) => entry.userId === user.id);
   const next = catalog.challenges.find((challenge) => !isSolved(challenge.id));
   const firstName = user.name.split(" ")[0];
-  const attempts = history.submissions.length;
-  const accepted = history.submissions.filter((submission) => submission.status === "accepted").length;
+  const attempts = history.pagination.total;
+  const accepted = acceptedHistory.pagination.total;
 
   paint(
     root,
@@ -134,7 +137,7 @@ export async function render({ root }) {
             </div>
             ${history.submissions.length === 0
               ? emptyState("Você ainda não enviou nenhuma solução.")
-              : submissionTable(history.submissions.slice(0, 6), catalog, { compact: true })}
+              : submissionTable(history.submissions, catalog, { compact: true })}
           </section>
         </div>
 

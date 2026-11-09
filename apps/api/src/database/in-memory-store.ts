@@ -150,6 +150,20 @@ export class InMemoryStore implements CodeLabStore {
     this.submissions.push(submission);
   }
 
+  async failStalePendingSubmissions(input: {
+    submittedBefore: Date;
+    evaluatedAt: Date;
+    errorMessage: string;
+  }): Promise<number> {
+    let closed = 0;
+    this.submissions.forEach((submission, index) => {
+      if (submission.status !== "pending" || submission.submittedAt >= input.submittedBefore) return;
+      closed += 1;
+      this.submissions[index] = { ...submission, status: "internal_error", scoreAwarded: 0, evaluatedAt: input.evaluatedAt, errorMessage: input.errorMessage };
+    });
+    return closed;
+  }
+
   async completeSubmission(
     input: CompleteSubmissionInput
   ): Promise<Submission> {
@@ -221,7 +235,15 @@ export class InMemoryStore implements CodeLabStore {
         (submission) => !challengeId || submission.challengeId === challengeId
       )
       .filter((submission) => !status || submission.status === status)
-      .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+      .sort(newestFirst);
+  }
+
+  async listSubmissionsPage(
+    filters: { userId?: string; challengeId?: string; status?: SubmissionStatus },
+    page: { skip: number; take: number }
+  ): Promise<{ items: Submission[]; total: number }> {
+    const matching = (await this.listSubmissions(filters.userId, filters.challengeId, filters.status));
+    return { items: matching.slice(page.skip, page.skip + page.take), total: matching.length };
   }
 
   async getScore(userId: string): Promise<ScoreSummary> {
@@ -385,6 +407,11 @@ export class InMemoryStore implements CodeLabStore {
     return this.users.get(userId);
   }
 
+  async revokeSessions(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, { ...user, sessionVersion: (user.sessionVersion ?? 0) + 1 });
+  }
+
   async getAccountStatus(userId: string): Promise<AccountStatus | undefined> {
     return this.users.has(userId) ? this.accounts.get(userId) ?? { emailVerifiedAt: null, createdAt: new Date(0) } : undefined;
   }
@@ -506,6 +533,11 @@ export class InMemoryStore implements CodeLabStore {
 /** Visível para estudantes: ativo e publicado (rascunhos ficam só com o admin). */
 function isVisible(challenge: Challenge): boolean {
   return challenge.isActive && challenge.isPublished !== false;
+}
+
+/** Mais recentes primeiro; o id desempata, para a paginação ser estável. */
+function newestFirst(a: Submission, b: Submission): number {
+  return b.submittedAt.getTime() - a.submittedAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
 }
 
 function sanitizeUser(user: UserCredentials): User {

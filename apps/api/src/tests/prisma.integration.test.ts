@@ -15,6 +15,7 @@ import { ScoreService } from "../modules/scoring/score.service.js";
 import { SubmissionEvaluationService } from "../modules/submissions/submission-evaluation.service.js";
 import { SubmissionService } from "../modules/submissions/submission.service.js";
 import { buildSeedData } from "../database/seed.js";
+import { seedDemoAccounts } from "../database/seed-accounts.js";
 
 const CATALOG_SIZE = buildSeedData().challenges.length;
 const EASY_COUNT = buildSeedData().challenges.filter((challenge) => challenge.difficulty === "easy").length;
@@ -40,7 +41,7 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
   it("persiste usuario com hash e sem senha pura", async () => {
     const userId = randomUUID();
     const email = `${userId}@codelab.local`;
-    const passwordHash = await bcrypt.hash("123456", 10);
+    const passwordHash = await bcrypt.hash("12345678", 10);
 
     try {
       const user = await store.createUser({
@@ -53,9 +54,9 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
       const persisted = await prisma.user.findUnique({ where: { id: userId } });
 
       expect(user).not.toHaveProperty("passwordHash");
-      expect(persisted?.passwordHash).not.toBe("123456");
+      expect(persisted?.passwordHash).not.toBe("12345678");
       await expect(
-        bcrypt.compare("123456", persisted?.passwordHash ?? "")
+        bcrypt.compare("12345678", persisted?.passwordHash ?? "")
       ).resolves.toBe(true);
     } finally {
       await prisma.user.deleteMany({ where: { id: userId } });
@@ -72,8 +73,8 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
 
     try {
       const results = await Promise.allSettled([
-        service.register({ name: "Primeiro Usuario", email, password: "123456" }),
-        service.register({ name: "Segundo Usuario", email, password: "123456" })
+        service.register({ name: "Primeiro Usuario", email, password: "12345678" }),
+        service.register({ name: "Segundo Usuario", email, password: "12345678" })
       ]);
       const fulfilled = results.filter((result) => result.status === "fulfilled");
       const rejected = results.filter((result) => result.status === "rejected");
@@ -94,7 +95,7 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
       id: userId,
       name: "Teste de Concorrencia",
       email: `${userId}@codelab.local`,
-      passwordHash: await bcrypt.hash("123456", 10),
+      passwordHash: await bcrypt.hash("12345678", 10),
       role: "student"
     });
     const service = new SubmissionService(
@@ -154,14 +155,14 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
         id: firstUserId,
         name: "Primeiro Avaliador",
         email: `${firstUserId}@codelab.local`,
-        passwordHash: await bcrypt.hash("123456", 10),
+        passwordHash: await bcrypt.hash("12345678", 10),
         role: "student"
       }),
       store.createUser({
         id: secondUserId,
         name: "Segundo Avaliador",
         email: `${secondUserId}@codelab.local`,
-        passwordHash: await bcrypt.hash("123456", 10),
+        passwordHash: await bcrypt.hash("12345678", 10),
         role: "student"
       })
     ]);
@@ -338,14 +339,14 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
         id: firstUserId,
         name: "Participante Um",
         email: `${firstUserId}@codelab.local`,
-        passwordHash: await bcrypt.hash("123456", 10),
+        passwordHash: await bcrypt.hash("12345678", 10),
         role: "student"
       }),
       store.createUser({
         id: secondUserId,
         name: "Participante Dois",
         email: `${secondUserId}@codelab.local`,
-        passwordHash: await bcrypt.hash("123456", 10),
+        passwordHash: await bcrypt.hash("12345678", 10),
         role: "student"
       })
     ]);
@@ -516,7 +517,7 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
     const ownerId = "user-admin";
     const classId = randomUUID();
     const now = new Date();
-    await store.createUser({ id: userId, name: "Conta LGPD", email: `${userId}@codelab.local`, passwordHash: await bcrypt.hash("123456", 10), role: "student" });
+    await store.createUser({ id: userId, name: "Conta LGPD", email: `${userId}@codelab.local`, passwordHash: await bcrypt.hash("12345678", 10), role: "student" });
 
     // Conta nova nasce sem e-mail verificado; a verificação grava a data.
     expect((await store.getAccountStatus(userId))?.emailVerifiedAt).toBeNull();
@@ -554,5 +555,88 @@ describe.skipIf(!runDatabaseTests)("integracao PostgreSQL", () => {
     expect(await store.listClassMembers(classId)).toEqual([]);
     await store.deleteClass(classId);
     expect(await store.findClassById(classId)).toBeUndefined();
+  });
+
+  it("revokeSessions sobe a versão de sessão da pessoa e só a dela", async () => {
+    const userId = randomUUID();
+    const otherId = randomUUID();
+    for (const id of [userId, otherId]) {
+      await store.createUser({ id, name: "Sessões", email: `${id}@codelab.local`, passwordHash: await bcrypt.hash("12345678", 10), role: "student" });
+    }
+
+    try {
+      expect((await store.findUserCredentialsById(userId))?.sessionVersion).toBe(0);
+      await store.revokeSessions(userId);
+      await store.revokeSessions(userId);
+
+      expect((await store.findUserCredentialsById(userId))?.sessionVersion).toBe(2);
+      expect((await store.findUserCredentialsById(otherId))?.sessionVersion).toBe(0);
+      // Conta já apagada: não é erro.
+      await expect(store.revokeSessions(randomUUID())).resolves.toBeUndefined();
+    } finally {
+      await prisma.user.deleteMany({ where: { id: { in: [userId, otherId] } } });
+    }
+  });
+
+  it("fecha como internal_error as submissões pending antigas e preserva as recentes", async () => {
+    const userId = randomUUID();
+    await store.createUser({ id: userId, name: "Presas", email: `${userId}@codelab.local`, passwordHash: await bcrypt.hash("12345678", 10), role: "student" });
+    const challenge = (await store.findChallengeBySlug("soma-de-dois-numeros"))!;
+    const now = new Date();
+    const submission = (id: string, status: "pending" | "accepted", minutesAgo: number) => ({
+      id,
+      userId,
+      challengeId: challenge.id,
+      language: "javascript" as const,
+      sourceCode: "// código",
+      status,
+      scoreAwarded: 0,
+      submittedAt: new Date(now.getTime() - minutesAgo * 60 * 1000),
+      evaluatedAt: status === "pending" ? null : now,
+      totalTests: 3,
+      passedTests: 0,
+      errorMessage: null,
+      compileWarnings: null,
+      testResults: []
+    });
+    const [oldPending, recentPending, oldAccepted] = [randomUUID(), randomUUID(), randomUUID()];
+
+    try {
+      await store.addSubmission(submission(oldPending, "pending", 30));
+      await store.addSubmission(submission(recentPending, "pending", 1));
+      await store.addSubmission(submission(oldAccepted, "accepted", 30));
+
+      const closed = await store.failStalePendingSubmissions({
+        submittedBefore: new Date(now.getTime() - 10 * 60 * 1000),
+        evaluatedAt: now,
+        errorMessage: "O ambiente de avaliação falhou."
+      });
+      const byId = new Map((await store.listSubmissions(userId)).map((item) => [item.id, item]));
+
+      expect(closed).toBeGreaterThanOrEqual(1);
+      expect(byId.get(oldPending)).toMatchObject({ status: "internal_error", scoreAwarded: 0, errorMessage: "O ambiente de avaliação falhou." });
+      expect(byId.get(recentPending)?.status).toBe("pending");
+      expect(byId.get(oldAccepted)?.status).toBe("accepted");
+    } finally {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  });
+
+  it("o seed das contas de demonstração não regrava a senha nem o nome de uma conta que já existe", async () => {
+    await seedDemoAccounts(prisma); // garante que as contas existem
+    const original = await prisma.user.findUniqueOrThrow({ where: { id: "user-admin" } });
+    const changedHash = await bcrypt.hash("senha-trocada-pelo-admin", 10);
+    await prisma.user.update({ where: { id: "user-admin" }, data: { passwordHash: changedHash, name: "Administrador Renomeado" } });
+
+    try {
+      await seedDemoAccounts(prisma);
+      await seedDemoAccounts(prisma);
+
+      const after = await prisma.user.findUniqueOrThrow({ where: { id: "user-admin" } });
+      expect(after.passwordHash).toBe(changedHash);
+      expect(after.name).toBe("Administrador Renomeado");
+    } finally {
+      await prisma.user.update({ where: { id: "user-admin" }, data: { passwordHash: original.passwordHash, name: original.name } });
+    }
   });
 });

@@ -20,11 +20,18 @@ function makeApp() {
   return { app, store };
 }
 
+/** O token de sessão vem no cookie `codelab_session`; o teste o reenvia por Authorization para simular uma cópia. */
+function sessionToken(response: request.Response): string {
+  const token = response.headers["set-cookie"]?.[0]?.match(/codelab_session=([^;]+)/)?.[1];
+  if (!token) throw new Error("A resposta não definiu o cookie de sessão.");
+  return token;
+}
+
 async function register(app: ReturnType<typeof createApp>) {
   return request(app).post("/api/auth/register").send({
     name: "Ana Silva",
     email: "ana@email.com",
-    password: "123456"
+    password: "12345678"
   });
 }
 
@@ -36,7 +43,7 @@ describe("API de autenticação", () => {
     const registration = await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "ana@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     expect(registration.status).toBe(201);
@@ -73,7 +80,7 @@ describe("API de autenticação", () => {
 
     const response = await request(app).post("/api/auth/login").send({
       email: "ANA@EMAIL.COM",
-      password: "123456"
+      password: "12345678"
     });
 
     expect(response.status).toBe(200);
@@ -114,7 +121,7 @@ describe("API de autenticação", () => {
     const registration = await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "ana@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent
@@ -147,7 +154,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "feedback@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent
@@ -177,7 +184,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "oculto@email.com",
-      password: "123456"
+      password: "12345678"
     });
     const hardcoded = "function somar(a, b) { return a === 10 && b === -4 ? 6 : 8; }";
 
@@ -204,7 +211,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "executar@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent
@@ -231,7 +238,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "sintaxe@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent
@@ -249,7 +256,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "historico@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     await agent.post("/api/challenges/soma-de-dois-numeros/submissions").send({
@@ -283,7 +290,7 @@ describe("API de autenticação", () => {
     await agent.post("/api/auth/register").send({
       name: "Ana Silva",
       email: "ana@email.com",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent.post("/api/auth/logout");
@@ -294,5 +301,162 @@ describe("API de autenticação", () => {
       "codelab_session=;"
     );
     await agent.get("/api/me").expect(401);
+  });
+
+  describe("paginação do histórico de submissões", () => {
+    async function appWithHistory(total: number, options: { sameInstant?: boolean } = {}) {
+      const { app, store } = makeApp();
+      const agent = request.agent(app);
+      const registration = await agent
+        .post("/api/auth/register")
+        .send({ name: "Ana Silva", email: "ana@email.com", password: "12345678" })
+        .expect(201);
+      const userId: string = registration.body.user.id;
+      for (let index = 0; index < total; index += 1) {
+        await store.addSubmission({
+          id: `submission-${String(index).padStart(3, "0")}`,
+          userId,
+          challengeId: catalogChallenges[0].id,
+          language: "javascript",
+          sourceCode: `// tentativa ${index}`,
+          status: index % 5 === 0 ? "accepted" : "wrong_answer",
+          scoreAwarded: 0,
+          // Do mais antigo (0) ao mais recente; ou todos no mesmo instante, para provar o desempate.
+          submittedAt: new Date(options.sameInstant ? 1_780_000_000_000 : 1_780_000_000_000 + index * 1000),
+          evaluatedAt: new Date(1_780_000_000_000),
+          totalTests: 3,
+          passedTests: 0,
+          errorMessage: null,
+          compileWarnings: null,
+          testResults: []
+        });
+      }
+      return agent;
+    }
+
+    it("devolve só a primeira página (20) por padrão, com o total", async () => {
+      const agent = await appWithHistory(25);
+
+      const response = await agent.get("/api/submissions").expect(200);
+
+      expect(response.body.submissions).toHaveLength(20);
+      expect(response.body.pagination).toEqual({ page: 1, limit: 20, total: 25, totalPages: 2 });
+      expect(response.body.filters).toEqual({ status: null });
+      // Mais recentes primeiro.
+      expect(response.body.submissions[0].id).toBe("submission-024");
+    });
+
+    it("pagina com page e limit, sem repetir nem pular submissões", async () => {
+      const agent = await appWithHistory(25);
+
+      const second = await agent.get("/api/submissions?page=2").expect(200);
+      expect(second.body.submissions.map((item: { id: string }) => item.id)).toEqual([
+        "submission-004", "submission-003", "submission-002", "submission-001", "submission-000"
+      ]);
+
+      const seen: string[] = [];
+      for (let page = 1; page <= 4; page += 1) {
+        const response = await agent.get(`/api/submissions?limit=7&page=${page}`).expect(200);
+        expect(response.body.pagination).toMatchObject({ page, limit: 7, total: 25, totalPages: 4 });
+        seen.push(...response.body.submissions.map((item: { id: string }) => item.id));
+      }
+      expect(seen).toHaveLength(25);
+      expect(new Set(seen).size).toBe(25);
+    });
+
+    it("mantém a ordem estável quando várias submissões têm o mesmo instante", async () => {
+      const agent = await appWithHistory(12, { sameInstant: true });
+
+      const seen: string[] = [];
+      for (let page = 1; page <= 4; page += 1) {
+        const response = await agent.get(`/api/submissions?limit=3&page=${page}`).expect(200);
+        seen.push(...response.body.submissions.map((item: { id: string }) => item.id));
+      }
+
+      expect(new Set(seen).size).toBe(12);
+    });
+
+    it("conta o total dentro do filtro de status", async () => {
+      const agent = await appWithHistory(25);
+
+      const response = await agent.get("/api/submissions?status=accepted&limit=2").expect(200);
+
+      // Índices 0, 5, 10, 15 e 20 foram aceitos.
+      expect(response.body.pagination).toEqual({ page: 1, limit: 2, total: 5, totalPages: 3 });
+      expect(response.body.submissions.map((item: { id: string }) => item.id)).toEqual(["submission-020", "submission-015"]);
+    });
+
+    it("devolve página vazia além do fim e totalPages 1 sem submissões", async () => {
+      const agent = await appWithHistory(3);
+      const beyond = await agent.get("/api/submissions?page=9").expect(200);
+      expect(beyond.body.submissions).toEqual([]);
+      expect(beyond.body.pagination).toMatchObject({ page: 9, total: 3, totalPages: 1 });
+
+      const empty = await (await appWithHistory(0)).get("/api/submissions").expect(200);
+      expect(empty.body.pagination).toEqual({ page: 1, limit: 20, total: 0, totalPages: 1 });
+    });
+
+    it.each(["page=0", "page=-1", "page=abc", "page=1.5", "limit=0", "limit=101", "limit=abc"])(
+      "recusa parâmetros inválidos (%s)",
+      async (query) => {
+        const agent = await appWithHistory(1);
+
+        await agent.get(`/api/submissions?${query}`).expect(400);
+      }
+    );
+
+    it("aceita o limite máximo de 100", async () => {
+      const agent = await appWithHistory(1);
+
+      const response = await agent.get("/api/submissions?limit=100").expect(200);
+
+      expect(response.body.pagination.limit).toBe(100);
+    });
+  });
+
+  it("invalida o token depois do logout, mesmo enviado pelo cabeçalho Authorization", async () => {
+    const { app } = makeApp();
+    const token = sessionToken(await register(app));
+
+    await request(app).get("/api/me").set("Authorization", `Bearer ${token}`).expect(200);
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${token}`).expect(200);
+
+    // Um token copiado antes de sair não pode continuar valendo pelas 8 horas restantes.
+    await request(app).get("/api/me").set("Authorization", `Bearer ${token}`).expect(401);
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${token}`).expect(401);
+  });
+
+  it("permite entrar de novo depois do logout, e só o token novo vale", async () => {
+    const { app } = makeApp();
+    const oldToken = sessionToken(await register(app));
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${oldToken}`).expect(200);
+
+    const login = await request(app).post("/api/auth/login").send({ email: "ana@email.com", password: "12345678" }).expect(200);
+    const newToken = sessionToken(login);
+
+    await request(app).get("/api/me").set("Authorization", `Bearer ${newToken}`).expect(200);
+    await request(app).get("/api/me").set("Authorization", `Bearer ${oldToken}`).expect(401);
+  });
+
+  it("o logout de uma pessoa não derruba a sessão de outra", async () => {
+    const { app } = makeApp();
+    const ana = sessionToken(await register(app));
+    const bruno = sessionToken(
+      await request(app).post("/api/auth/register").send({ name: "Bruno Souza", email: "bruno@email.com", password: "12345678" }).expect(201)
+    );
+
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${ana}`).expect(200);
+
+    await request(app).get("/api/me").set("Authorization", `Bearer ${bruno}`).expect(200);
+  });
+
+  it("exige 8 caracteres na senha do cadastro", async () => {
+    const { app } = makeApp();
+    const short = await request(app).post("/api/auth/register").send({ name: "Ana Silva", email: "ana@email.com", password: "1234567" });
+    const ok = await request(app).post("/api/auth/register").send({ name: "Ana Silva", email: "ana@email.com", password: "12345678" });
+
+    expect(short.status).toBe(400);
+    expect(short.body.error).toBe("A senha deve ter pelo menos 8 caracteres.");
+    expect(ok.status).toBe(201);
   });
 });

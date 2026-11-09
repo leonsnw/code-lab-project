@@ -51,7 +51,7 @@ describe("API de desafios", () => {
     await agent.post("/api/auth/register").send({
       name: "Teste Catalogo",
       email: "catalogo@codelab.local",
-      password: "123456"
+      password: "12345678"
     });
 
     const response = await agent.get(

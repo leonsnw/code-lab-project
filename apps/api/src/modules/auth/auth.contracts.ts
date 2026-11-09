@@ -11,9 +11,16 @@ export interface AuthTokenPayload {
   issuedAt?: number;
   /** Impressão da senha no momento do login (veja password-version.ts). */
   passwordVersion?: string;
+  /** Versão de sessão do usuário no momento do login; o logout a incrementa. Ausente conta como 0. */
+  sessionVersion?: number;
+}
+
+export interface TokenIssueOptions {
+  passwordVersion?: string;
+  sessionVersion?: number;
 }
 
 export interface TokenService {
-  issue(user: User, options?: { passwordVersion?: string }): string;
+  issue(user: User, options?: TokenIssueOptions): string;
   verify(token: string): AuthTokenPayload;
 }

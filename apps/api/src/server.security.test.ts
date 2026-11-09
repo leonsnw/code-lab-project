@@ -89,4 +89,42 @@ describe("configuração de seguranca HTTP", () => {
       .send({ language: "javascript", sourceCode: "console.log(999);" })
       .expect(429);
   }, 30000);
+
+  it("conta o limite de submissões por pessoa: quem esgota o seu não bloqueia o colega no mesmo IP", async () => {
+    const app = createApp(new InMemoryStore(), {
+      jwtSecret: "segredo-de-rate-limit-por-usuario-32-caracteres",
+      environment: "test"
+    });
+    // No supertest todas as requisições saem do mesmo IP, como alunos de um laboratório.
+    const ana = request.agent(app);
+    const bruno = request.agent(app);
+    await ana.post("/api/auth/register").send({ name: "Ana Silva", email: "ana@email.com", password: "12345678" }).expect(201);
+    await bruno.post("/api/auth/register").send({ name: "Bruno Souza", email: "bruno@email.com", password: "12345678" }).expect(201);
+
+    // Envios inválidos (400) também contam no limite e não rodam o juiz.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await ana.post("/api/challenges/soma-de-dois-numeros/submissions").send({}).expect(400);
+    }
+    await ana.post("/api/challenges/soma-de-dois-numeros/submissions").send({}).expect(429);
+
+    // O colega continua com o limite inteiro.
+    await bruno.post("/api/challenges/soma-de-dois-numeros/submissions").send({}).expect(400);
+  }, 30000);
+
+  it("o limite de execuções também é por pessoa", async () => {
+    const app = createApp(new InMemoryStore(), {
+      jwtSecret: "segredo-de-rate-limit-execucao-32-caracteres",
+      environment: "test"
+    });
+    const ana = request.agent(app);
+    const bruno = request.agent(app);
+    await ana.post("/api/auth/register").send({ name: "Ana Silva", email: "ana@email.com", password: "12345678" }).expect(201);
+    await bruno.post("/api/auth/register").send({ name: "Bruno Souza", email: "bruno@email.com", password: "12345678" }).expect(201);
+
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await ana.post("/api/challenges/soma-de-dois-numeros/run").send({}).expect(400);
+    }
+    await ana.post("/api/challenges/soma-de-dois-numeros/run").send({}).expect(429);
+    await bruno.post("/api/challenges/soma-de-dois-numeros/run").send({}).expect(400);
+  }, 30000);
 });

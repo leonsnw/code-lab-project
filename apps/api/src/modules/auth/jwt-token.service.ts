@@ -1,7 +1,7 @@
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { DomainError } from "../../common/domain-error.js";
 import type { User } from "../../domain/types.js";
-import type { AuthTokenPayload, TokenService } from "./auth.contracts.js";
+import type { AuthTokenPayload, TokenIssueOptions, TokenService } from "./auth.contracts.js";
 
 const TOKEN_ISSUER = "codelab-api";
 const TOKEN_AUDIENCE = "codelab-web";
@@ -13,8 +13,13 @@ export class JwtTokenService implements TokenService {
     }
   }
 
-  issue(user: User, options: { passwordVersion?: string } = {}): string {
-    return jwt.sign({ type: "access", ...(options.passwordVersion ? { pwv: options.passwordVersion } : {}) }, this.secret, {
+  issue(user: User, options: TokenIssueOptions = {}): string {
+    const claims = {
+      type: "access",
+      ...(options.passwordVersion ? { pwv: options.passwordVersion } : {}),
+      ...(options.sessionVersion !== undefined ? { sv: options.sessionVersion } : {})
+    };
+    return jwt.sign(claims, this.secret, {
       subject: user.id,
       expiresIn: "8h",
       issuer: TOKEN_ISSUER,
@@ -36,7 +41,8 @@ export class JwtTokenService implements TokenService {
       return {
         userId: payload.sub,
         issuedAt: payload.iat,
-        passwordVersion: typeof payload.pwv === "string" ? payload.pwv : undefined
+        passwordVersion: typeof payload.pwv === "string" ? payload.pwv : undefined,
+        sessionVersion: typeof payload.sv === "number" ? payload.sv : undefined
       };
     } catch {
       throw new DomainError(

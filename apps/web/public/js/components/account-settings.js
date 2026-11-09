@@ -29,7 +29,7 @@ export async function mountAccountSettings(target, user) {
           <summary>Trocar senha</summary>
           <form id="password-form" class="stack-form">
             <div class="field"><label for="current-password">Senha atual</label><input id="current-password" name="current" type="password" autocomplete="current-password" class="input" required /></div>
-            <div class="field"><label for="new-password">Nova senha</label><input id="new-password" name="next" type="password" autocomplete="new-password" minlength="6" maxlength="72" class="input" required /><small>Mínimo de 6 caracteres. As sessões em outros aparelhos serão encerradas.</small></div>
+            <div class="field"><label for="new-password">Nova senha</label><input id="new-password" name="next" type="password" autocomplete="new-password" minlength="8" maxlength="72" class="input" required /><small>Mínimo de 8 caracteres. As sessões em outros aparelhos serão encerradas.</small></div>
             <button class="btn btn-sm" type="submit">Trocar senha</button>
           </form>
         </details>
