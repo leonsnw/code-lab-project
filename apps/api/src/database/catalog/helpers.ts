@@ -30,7 +30,18 @@ export { createRandom };
  * sem inflar o caso guardado). `gen(spec).value` é o valor expandido, para
  * calcular a saída esperada; `gen(spec).spec` vai no caso.
  */
-export function gen(spec: GeneratedSpec): { spec: GeneratedSpec; value: any } {
+// Os valores gerados são dados de teste heterogêneos (números, textos, listas, matrizes) e quem
+// os usa já faz o cast para o formato esperado. O `any` fica aqui, num único lugar.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type GeneratedValue = any;
+
+/** Um argumento gerado: o `spec` que vai no caso e o `value` expandido, para calcular a saída esperada. */
+export interface Generated {
+  spec: GeneratedSpec;
+  value: GeneratedValue;
+}
+
+export function gen(spec: GeneratedSpec): Generated {
   return { spec, value: generate(spec) };
 }
 

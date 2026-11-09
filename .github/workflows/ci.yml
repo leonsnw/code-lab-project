@@ -23,6 +23,10 @@ jobs:
           # Ubuntu 24.04 restringe user namespaces sem privilégio via AppArmor.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: npm ci
+      - name: Lint e formatação
+        run: |
+          npm run lint
+          npm run format:check
       - run: npm run db:generate
       - run: npm run build
       - name: Testes (inclui soluções e burlas de desafios/)

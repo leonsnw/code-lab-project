@@ -1,5 +1,5 @@
 import type { Challenge, SourceRule } from "../../domain/types.js";
-import { call, createRandom, defineChallenge, gen, language, randomArray, randomInt, randomWord, shuffle, type CaseDefinition } from "./helpers.js";
+import { call, createRandom, defineChallenge, gen, language, randomArray, randomInt, randomWord, shuffle, type CaseDefinition, type Generated } from "./helpers.js";
 import { moduleId } from "./tracks.js";
 
 /**
@@ -852,7 +852,7 @@ function maiorSubsequenciaComum(): Challenge {
     [randomWord(random, 40, 40, "abc"), randomWord(random, 40, 40, "abc")],
     [randomWord(random, 300, 300), randomWord(random, 250, 250)]
   ];
-  const big: Array<[{ spec: any; value: any }, { spec: any; value: any }]> = [
+  const big: Array<[Generated, Generated]> = [
     [gen({ $gen: "string", n: 2500, seed: 700602, alphabet: "ab" }), gen({ $gen: "string", n: 2500, seed: 700603, alphabet: "ab" })],
     [gen({ $gen: "string", n: 2500, seed: 700604 }), gen({ $gen: "string", n: 2500, seed: 700605 })],
     [gen({ $gen: "string", n: 1500, seed: 700606, alphabet: "acgt" }), gen({ $gen: "string", n: 2500, seed: 700607, alphabet: "acgt" })],
@@ -1068,7 +1068,7 @@ function distanciaDeEdicao(): Challenge {
     [randomWord(random, 400, 400, "abc"), randomWord(random, 350, 350, "abc")],
     [base, mutate(base, 200)]
   ];
-  const big: Array<[{ spec: any; value: any }, { spec: any; value: any }]> = [
+  const big: Array<[Generated, Generated]> = [
     [gen({ $gen: "string", n: 2000, seed: 700802 }), gen({ $gen: "string", n: 2000, seed: 700803 })],
     [gen({ $gen: "string", n: 2000, seed: 700804, alphabet: "ab" }), gen({ $gen: "string", n: 1900, seed: 700805, alphabet: "ab" })],
     [gen({ $gen: "string", n: 2000, seed: 700806, alphabet: "z" }), gen({ $gen: "string", n: 1, seed: 700807, alphabet: "z" })]

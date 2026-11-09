@@ -23,7 +23,6 @@ import {
   bwrap,
   buildSeccompProgram,
   judgeQueue,
-  SandboxUnavailableError,
   SIGNALS,
   spawnProcess
 } from "./sandbox.js";

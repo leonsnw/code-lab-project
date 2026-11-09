@@ -14,6 +14,10 @@
     "css:build": "tailwindcss -i apps/web/styles/app.css -o apps/web/public/styles.css --minify",
     "css:watch": "tailwindcss -i apps/web/styles/app.css -o apps/web/public/styles.css --watch",
     "build": "npm run css:build && npm run build -w apps/api",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write",
+    "format:check": "prettier --check \"apps/api/**/*.ts\" \"apps/web/public/js/**/*.js\" \"scripts/**/*.mjs\" \"scripts/**/*.mts\" \"*.mjs\"",
     "db:generate": "npm run db:generate -w apps/api",
     "db:push": "npm run db:push -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
@@ -27,7 +31,12 @@
     "start": "npm run start -w apps/api"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/cli": "^4.3.3",
-    "tailwindcss": "^4.3.3"
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.3.3",
+    "typescript-eslint": "^8.72.1"
   }
 }

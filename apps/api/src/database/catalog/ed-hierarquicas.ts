@@ -10,7 +10,8 @@ import {
   randomWord,
   rules,
   shuffle,
-  type CaseDefinition
+  type CaseDefinition,
+  type GeneratedValue
 } from "./helpers.js";
 import { moduleId } from "./tracks.js";
 
@@ -1976,7 +1977,7 @@ function grauDosVertices(): Challenge {
     [10000, randomEdges(10000, 3000)],
     [10000, []]
   ];
-  const big: Array<[number, { spec: unknown; value: any }]> = [
+  const big: Array<[number, { spec: unknown; value: GeneratedValue }]> = [
     [10000, gen({ $gen: "edges", n: 10000, m: 200000, seed: 503001 })],
     [10000, gen({ $gen: "edges", n: 10000, seed: 503002, tree: true })]
   ];
@@ -2077,7 +2078,7 @@ function distanciasBfs(): Challenge {
     [8000, longPath.edges, longPath.labels[0]],
     [8000, longPath.edges, longPath.labels[4000]]
   ];
-  const big: Array<[number, { spec: unknown; value: any }, number]> = [
+  const big: Array<[number, { spec: unknown; value: GeneratedValue }, number]> = [
     [10000, gen({ $gen: "edges", n: 10000, m: 200000, seed: 503101 }), 0],
     [10000, gen({ $gen: "edges", n: 10000, m: 9000, seed: 503102 }), 9999]
   ];
