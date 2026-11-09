@@ -1,3 +1,4 @@
+import { isEvaluated } from "./submission-status.js";
 import type {
   Difficulty,
   SubmissionStatus,
@@ -153,10 +154,14 @@ export function buildAdminStatistics(
     byUser.set(user.id, createUserAccumulator());
   }
 
+  // Só as submissões já avaliadas entram nas taxas.
+  let evaluatedSubmissions = 0;
   for (const submission of data.submissions) {
     submissionStatuses[submission.status] += 1;
-    // Sandbox failures say nothing about the challenge or the student.
-    if (submission.status === "internal_error") continue;
+    // Falhas do sandbox não dizem nada sobre o desafio nem sobre o aluno, e as
+    // submissões ainda na fila (pending) não são erro: não foram avaliadas.
+    if (!isEvaluated(submission.status)) continue;
+    evaluatedSubmissions += 1;
     const accumulator = byChallenge.get(submission.challengeId);
     const challenge = challengeById.get(submission.challengeId);
     const difficultyAccumulator = challenge
@@ -246,7 +251,7 @@ export function buildAdminStatistics(
       inactiveChallenges: data.challenges.length - activeChallenges,
       totalSubmissions: data.submissions.length,
       acceptedSubmissions,
-      acceptanceRate: percentage(acceptedSubmissions, data.submissions.length),
+      acceptanceRate: percentage(acceptedSubmissions, evaluatedSubmissions),
       totalComments: data.comments.length,
       totalRatings: data.ratings.length,
       averageRating: average(ratingSum, data.ratings.length)

@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { DomainError } from "../../common/domain-error.js";
 import type { CodeLabStore } from "../../database/codelab-store.js";
+import { isEvaluated } from "../../domain/submission-status.js";
 import type { ClassGroup, User } from "../../domain/types.js";
 import { parseOrThrow } from "../auth/auth.service.js";
 import { dayKey } from "../stats/stats.service.js";
@@ -87,7 +88,10 @@ export class ClassService {
     const students: ClassStudentRow[] = await Promise.all(
       members.map(async (member) => {
         const [score, submissions] = await Promise.all([this.store.getScore(member.userId), this.store.listSubmissions(member.userId)]);
-        const accepted = submissions.filter((submission) => submission.status === "accepted").length;
+        // A porcentagem usa só as submissões avaliadas, como as estatísticas do administrador:
+        // falha do sandbox e envio ainda na fila não contam contra o aluno.
+        const evaluated = submissions.filter((submission) => isEvaluated(submission.status));
+        const accepted = evaluated.filter((submission) => submission.status === "accepted").length;
         const byTrack: Record<string, number> = Object.fromEntries(tracks.map((track) => [track.slug, 0]));
         for (const challengeId of score.solvedChallengeIds) {
           const track = challengeTrack.get(challengeId);
@@ -102,7 +106,7 @@ export class ClassService {
           totalPoints: score.totalPoints,
           solvedChallenges: score.solvedChallengeIds.length,
           submissions: submissions.length,
-          acceptanceRate: submissions.length ? Math.round((accepted / submissions.length) * 100) : 0,
+          acceptanceRate: evaluated.length ? Math.round((accepted / evaluated.length) * 100) : 0,
           lastActivity: last?.toISOString() ?? null,
           byTrack
         };
@@ -131,7 +135,7 @@ export class ClassService {
       student.lastActivity ? dayKey(new Date(student.lastActivity)) : "",
       ...tracks.map((track) => student.byTrack[track.slug] ?? 0)
     ]);
-    const content = `﻿${[header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
+    const content = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
     const slug = classGroup.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "turma";
     return { filename: `turma-${slug}-${dayKey(this.now())}.csv`, content };
   }

@@ -156,6 +156,41 @@ describe("buildAdminStatistics", () => {
     });
   });
 
+  it("ignora submissões pending nas taxas: quem espera na fila não errou", () => {
+    const statistics = buildAdminStatistics({
+      ...data,
+      submissions: [
+        { challengeId: "challenge-a", userId: "user-1", status: "accepted" },
+        { challengeId: "challenge-a", userId: "user-2", status: "accepted" },
+        { challengeId: "challenge-a", userId: "user-1", status: "pending" },
+        { challengeId: "challenge-a", userId: "user-2", status: "pending" }
+      ]
+    });
+    const [challenge] = statistics.challenges.filter((item) => item.id === "challenge-a");
+
+    expect(challenge).toMatchObject({ totalSubmissions: 2, acceptedSubmissions: 2, errorRate: 0, acceptanceRate: 100 });
+    expect(statistics.difficulties[0]).toMatchObject({ difficulty: "easy", totalSubmissions: 2, acceptanceRate: 100 });
+    expect(statistics.users.find((user) => user.id === "user-1")).toMatchObject({ totalSubmissions: 1, acceptanceRate: 100 });
+    // A contagem por status continua mostrando o que está na fila.
+    expect(statistics.submissionStatuses.pending).toBe(2);
+    expect(statistics.overview).toMatchObject({ totalSubmissions: 4, acceptedSubmissions: 2, acceptanceRate: 100 });
+  });
+
+  it("ignora internal_error nas taxas, como pending", () => {
+    const statistics = buildAdminStatistics({
+      ...data,
+      submissions: [
+        { challengeId: "challenge-a", userId: "user-1", status: "accepted" },
+        { challengeId: "challenge-a", userId: "user-1", status: "wrong_answer" },
+        { challengeId: "challenge-a", userId: "user-1", status: "internal_error" },
+        { challengeId: "challenge-a", userId: "user-1", status: "pending" }
+      ]
+    });
+
+    expect(statistics.challenges.find((item) => item.id === "challenge-a")).toMatchObject({ totalSubmissions: 2, errorRate: 50, acceptanceRate: 50 });
+    expect(statistics.overview.acceptanceRate).toBe(50);
+  });
+
   it("usa zero quando ainda nao existem interacoes", () => {
     const statistics = buildAdminStatistics({
       users: [],
