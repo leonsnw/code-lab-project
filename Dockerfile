@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
 RUN npm ci
 COPY apps/api apps/api
 COPY apps/web apps/web

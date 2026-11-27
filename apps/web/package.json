@@ -1,0 +1,17 @@
+{
+  "name": "@codelab/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend do CodeLab (SPA em JavaScript puro) e seus testes.",
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.10"
+  }
+}

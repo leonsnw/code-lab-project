@@ -7,7 +7,8 @@
   },
   "description": "CodeLab: plataforma de desafios, avaliacao por casos de teste e pontuacao.",
   "workspaces": [
-    "apps/api"
+    "apps/api",
+    "apps/web"
   ],
   "scripts": {
     "dev": "npm run css:build && (npm run css:watch & npm run dev -w apps/api)",
@@ -17,7 +18,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write",
-    "format:check": "prettier --check \"apps/api/**/*.ts\" \"apps/web/public/js/**/*.js\" \"scripts/**/*.mjs\" \"scripts/**/*.mts\" \"*.mjs\"",
+    "format:check": "prettier --check \"apps/api/**/*.ts\" \"apps/web/public/js/**/*.js\" \"apps/web/tests/**/*.js\" \"apps/web/*.js\" \"scripts/**/*.mjs\" \"scripts/**/*.mts\" \"*.mjs\"",
     "db:generate": "npm run db:generate -w apps/api",
     "db:push": "npm run db:push -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
@@ -25,8 +26,10 @@
     "db:migrate:status": "npm run db:migrate:status -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
     "db:studio": "npm run db:studio -w apps/api",
-    "test": "npm run test -w apps/api",
-    "test:coverage": "npm run test:coverage -w apps/api",
+    "test": "npm run test -w apps/api && npm run test -w apps/web",
+    "test:coverage": "npm run test:coverage -w apps/api && npm run test:coverage -w apps/web",
+    "test:web": "npm run test -w apps/web",
+    "test:web:coverage": "npm run test:coverage -w apps/web",
     "test:integration": "npm run test:integration -w apps/api",
     "start": "npm run start -w apps/api"
   },
