@@ -33,6 +33,8 @@ jobs:
         run: npm test
         env:
           JUDGE_CONCURRENCY: 4
+      - name: Cobertura do frontend (piso de 50%; a meta da disciplina é 25%)
+        run: npm run test:web:coverage
 
   integracao:
     name: Integração com PostgreSQL

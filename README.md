@@ -176,10 +176,13 @@ Detalhes, ameaças e riscos residuais em [docs/seguranca-avaliacao.md](docs/segu
 ## Testes
 
 ```bash
-npm test                 # unidade, HTTP, juiz, catálogo e desafios/ (sem banco)
+npm test                 # backend (unidade, HTTP, juiz, catálogo, desafios/) e frontend; sem banco
 npm run test:integration # PostgreSQL real (use um banco descartável)
-npm run test:coverage
+npm run test:coverage    # cobertura do backend e do frontend
+npm run test:web         # só o frontend (Vitest + jsdom, em apps/web/tests)
 ```
+
+O frontend é JavaScript puro, sem bundler. Os testes de `apps/web/tests` rodam os módulos de `public/js` num DOM simulado (jsdom) com a API trocada por respostas de teste (`tests/helpers.js`): cobrem os utilitários (escape de HTML, Markdown, realce, formatação), o cliente da API, a sessão, o roteamento, a paleta de comandos, o veredito e a maior parte das telas. A CI falha se a cobertura do frontend cair abaixo de 50%.
 
 Sem `bwrap`, `gcc` ou `python3`, os testes que dependem deles são pulados. Sem a pasta `desafios/` (que não é versionada), os testes dela também são pulados.
 

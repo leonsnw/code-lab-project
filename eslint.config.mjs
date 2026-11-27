@@ -30,6 +30,11 @@ export default defineConfig([
     languageOptions: { sourceType: "module", globals: globals.browser }
   },
   {
+    // Testes do frontend: rodam em Node com jsdom, então enxergam as duas famílias de globais.
+    files: ["apps/web/tests/**/*.js", "apps/web/vitest.config.js"],
+    languageOptions: { sourceType: "module", globals: { ...globals.node, ...globals.browser } }
+  },
+  {
     rules: {
       // Parâmetros e variáveis iniciados por "_" são ignorados de propósito.
       "@typescript-eslint/no-unused-vars": [
